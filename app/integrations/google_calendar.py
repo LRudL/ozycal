@@ -51,25 +51,33 @@ def get_events(
     service, start: datetime.datetime, end: datetime.datetime
 ) -> list[Event]:
     all_events = []
-    for calendar_name, calendar_id in CALENDAR_IDS.items():
-        events_result = (
-            service.events()
-            .list(
-                calendarId=calendar_id,
-                timeMin=start,
-                timeMax=end,
-                singleEvents=True,
-                orderBy="startTime",
-            )
-            .execute()
-        )
+    batch = service.new_batch_http_request(callback=batch_callback)
 
-        if events_result.get("items"):
+    def batch_callback(request_id, response, exception):
+        if exception is not None:
+            print(f"An error occurred: {exception}")
+        else:
+            calendar_name = (
+                request_id  # Assuming request_id can be used to track calendar name
+            )
             all_events.extend(
                 [
                     Event.from_gcal_event(event, calendar_name)
-                    for event in events_result["items"]
+                    for event in response.get("items", [])
                 ]
             )
 
+    for calendar_name, calendar_id in CALENDAR_IDS.items():
+        batch.add(
+            service.events().list(
+                calendarId=calendar_id,
+                timeMin=start.isoformat() + "Z",  # Ensure the time format is RFC3339
+                timeMax=end.isoformat() + "Z",
+                singleEvents=True,
+                orderBy="startTime",
+            ),
+            request_id=calendar_name,  # Use calendar name as request ID
+        )
+
+    batch.execute()
     return all_events
