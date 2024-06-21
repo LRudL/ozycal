@@ -1,0 +1,24 @@
+api.json
+oauth.json
+oauth*.json
+credentials.json
+calendar_ids.json
+
+*.ipynb
+
+# Python
+.venv
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+
+# pycache:
+__pycache__/
+
+# .vscode
+.vscode/
