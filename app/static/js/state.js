@@ -16,14 +16,12 @@ export let state = {
         console.assert(this.selectedTime !== undefined, "selectedTime is undefined");
     },
     getNextEvent(time) {
-        var nextEvent = this.events[0];
-        for (var i = 1; i < this.events.length; i++) {
+        for (var i = 0; i < this.events.length; i++) {
             if (new Date(this.events[i].start) > time) {
-                nextEvent = this.events[i];
-                break;
+                return this.events[i];
+            }
         }
-    }
-        return nextEvent;
+        return this.events[this.events.length - 1];
     },
     getEventsContaining(time) {
         var eventsContaining = [];
