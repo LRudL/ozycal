@@ -1,7 +1,8 @@
 from flask import Flask
 import json
 from googleapiclient.discovery import build
-from .integrations.google_calendar import creds_bs
+from .integrations.google_calendar import get_service
+
 
 def create_app():
     app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -12,9 +13,10 @@ def create_app():
         api_key = api_data
 
     # Initialize Google Calendar Service
-    service = creds_bs()
+    service = get_service()
 
     from .routes import init_routes
+
     init_routes(app, service)
 
     return app

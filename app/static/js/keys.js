@@ -106,5 +106,4 @@ export function initializeKeystate(state, ui) {
 }
 
 // TODO:
-// - push to github
 // - keypress ui tooltip

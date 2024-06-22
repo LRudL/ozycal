@@ -12,46 +12,51 @@ from app.events import CALENDAR_IDS, Event
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
-def creds_bs():
+def get_service():
+    creds = load_or_refresh_credentials()
+    service = build("calendar", "v3", credentials=creds)
+    return service
+
+
+def load_or_refresh_credentials():
     creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
     if os.path.exists("oauth.json"):
-        print("Loading credentials from file")
-        try:
-            creds = Credentials.from_authorized_user_file("oauth.json", SCOPES)
-        except ValueError:
-            print("Invalid credentials, removing file")
-            os.remove("oauth.json")  # Remove the invalid file
-            creds = None  # Proceed to generate a new one
-    # If there are no (valid) credentials available, let the user log in.
+        creds = Credentials.from_authorized_user_file("oauth.json", SCOPES)
     if not creds or not creds.valid:
-        print("No valid credentials, generating new ones")
         if creds and creds.expired and creds.refresh_token:
-            print("Refreshing credentials")
             creds.refresh(Request())
         else:
-            print("No refresh token, starting flow")
             flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
             creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
             with open("oauth.json", "w") as token:
                 token.write(creds.to_json())
+    return creds
+
+
+def get_calendar_colors(service, calendar_ids):
     try:
-        print("Building service")
-        service = build("calendar", "v3", credentials=creds)
-        return service
+        calendar_list = service.calendarList().list().execute()
+        calendar_colors = {}
+        for calendar in calendar_list.get("items", []):
+            calendar_id = calendar["id"]
+            calendar_name = next(
+                (k for k, v in CALENDAR_IDS.items() if v == calendar_id), None
+            )
+            if calendar_name and calendar_id in calendar_ids.values():
+                bg_color = calendar.get("backgroundColor")
+                if bg_color:
+                    calendar_colors[calendar_name] = bg_color
+        return calendar_colors
     except HttpError as error:
-        print(f"An error occurred: {error}")
+        print(f"An HTTP error occurred: {error}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
         return None
 
 
-def get_events(
-    service, start: datetime.datetime, end: datetime.datetime
-) -> list[Event]:
+def get_events(service, start: str, end: str) -> list[Event]:
     all_events = []
-    batch = service.new_batch_http_request(callback=batch_callback)
 
     def batch_callback(request_id, response, exception):
         if exception is not None:
@@ -67,12 +72,14 @@ def get_events(
                 ]
             )
 
+    batch = service.new_batch_http_request(callback=batch_callback)
+
     for calendar_name, calendar_id in CALENDAR_IDS.items():
         batch.add(
             service.events().list(
                 calendarId=calendar_id,
-                timeMin=start.isoformat() + "Z",  # Ensure the time format is RFC3339
-                timeMax=end.isoformat() + "Z",
+                timeMin=start,
+                timeMax=end,
                 singleEvents=True,
                 orderBy="startTime",
             ),

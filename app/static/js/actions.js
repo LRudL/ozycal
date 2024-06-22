@@ -96,13 +96,9 @@ export function setSelectedEventFromTimeSet(state, ui, date=undefined, hour=unde
 
 export function setSelectedEventFromTimeDelta(state, ui, days=0, hours=0, minutes=0) {
     var targetTime = new Date(state.selectedTime);
-    console.log(targetTime)
     targetTime.setDate(targetTime.getDate() + days);
-    console.log(targetTime)
     targetTime.setHours(targetTime.getHours() + hours);
-    console.log(targetTime)
     targetTime.setMinutes(targetTime.getMinutes() + minutes);
-    console.log(targetTime)
     setSelectedEventFromTime(state, ui, targetTime);
 }
 

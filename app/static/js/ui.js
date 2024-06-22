@@ -1,6 +1,23 @@
 export let ui = {
     interface: null, // currently, just the fullcalendar calendar
     state: null, // see state.js
+    customCalendarColors: {},
+    setCalendarColors: function(calendarColors) {
+        // merge with existing calendar colors
+        this.customCalendarColors = {...this.customCalendarColors, ...calendarColors};
+        if (state) {
+            let fullCalendarEvents = this.interface.getEvents();
+            fullCalendarEvents.forEach(event => {
+                if (event.extendedProps.isOzycal && event.extendedProps.calendar && this.customCalendarColors[event.extendedProps.calendar]) {
+                    event.setProp('backgroundColor', this.customCalendarColors[event.extendedProps.calendar]);
+                } else {
+                    event.setProp('backgroundColor', "#0000ff");
+                }
+            });
+        }
+        console.assert(this.interface, "ui.interface is not initialized");
+        this.interface.render();
+    },
     isInitialized: function() {
         return this.interface && this.state;
     },

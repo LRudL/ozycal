@@ -41,6 +41,11 @@ class Event:
             "start": self.start.isoformat(),
             "end": self.end.isoformat(),
             "id": self.event_id,
+            "extendedProps": {
+                "isOzycal": True,
+                "calendar": self.calendar,
+                "summary": self.summary,
+            },
         }
 
     def gcal_update(self, service):

@@ -44,23 +44,35 @@ document.addEventListener('DOMContentLoaded', function() {
             className: 'selected-time',
         });
         calendar.render()
-        console.log(state)
         return calendar;
     }
 
     document.addEventListener('keydown', keystate.handleKeyPress.bind(keystate));
 
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    fetch(`/api/weekly_events?timezone=${encodeURIComponent(userTimezone)}`)
+    const eventsPromise = fetch(`/api/weekly_events?timezone=${encodeURIComponent(userTimezone)}`)
         .then(response => response.json())
         .then(eventsReceived => {
             state.events = eventsReceived; // this variable is used by createCalendar
             // sort the events by .start
-            state.sortEvents()
-            initializeState(state, new Date())
+            state.sortEvents();
+            initializeState(state, new Date());
             calendar = createCalendar(state.selectedTime);
-            initializeUi(calendar, state)
-            initializeKeystate(state, ui)
+            initializeUi(calendar, state);
+            initializeKeystate(state, ui);
         })
         .catch(error => console.error('Error loading events:', error));
+
+    const colorsPromise = fetch(`/api/calendar_colors`)
+        .then(response => response.json())
+        .catch(error => console.error('Error loading calendar colors:', error));
+
+    eventsPromise.then(() => {
+        colorsPromise.then(calendarColors => {
+            console.log(111)
+            console.log(state.events)
+            console.log(ui.interface)
+            ui.setCalendarColors(calendarColors);
+        });
+    });
 });
