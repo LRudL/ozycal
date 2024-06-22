@@ -8,11 +8,13 @@ export let ui = {
         if (state) {
             let fullCalendarEvents = this.interface.getEvents();
             fullCalendarEvents.forEach(event => {
-                if (event.extendedProps.isOzycal && event.extendedProps.calendar && this.customCalendarColors[event.extendedProps.calendar]) {
-                    event.setProp('backgroundColor', this.customCalendarColors[event.extendedProps.calendar]);
-                } else {
-                    event.setProp('backgroundColor', "#0000ff");
-                }
+                if (event.extendedProps.isOzycal) {
+                    if (event.extendedProps.calendar && this.customCalendarColors[event.extendedProps.calendar]) {
+                        event.setProp('backgroundColor', this.customCalendarColors[event.extendedProps.calendar]);
+                    } else {
+                        event.setProp('backgroundColor', "#0000ff");
+                    }
+                } 
             });
         }
         console.assert(this.interface, "ui.interface is not initialized");
@@ -39,6 +41,7 @@ export let ui = {
         this.interface.render();
     },
     enableSelectedTimeLine: function() {
+        console.assert(this.interface.getEventById("selected-time") == null, "selected-time event should not exist");
         this.interface.addEvent({
             id: 'selected-time',
             start: this.state.selectedTime,
@@ -48,7 +51,10 @@ export let ui = {
         this.interface.render()
     },
     disableSelectedTimeLine: function() {
-        this.interface.getEventById("selected-time").remove();
+        var nowLineEvent = this.interface.getEventById("selected-time");
+        if (nowLineEvent) {
+            nowLineEvent.remove();
+        }
         this.interface.render()
     },
     updateSelectedEvent: function() {

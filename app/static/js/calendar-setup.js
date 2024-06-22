@@ -37,12 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
             headerToolbar: false
         });
         calendar.addEventSource(state.events);
-        calendar.addEvent({
-            id: 'selected-time',
-            start: time,
-            end: new Date(time.getTime() + 60000), // 1 minute duration
-            className: 'selected-time',
-        });
         calendar.render()
         return calendar;
     }
@@ -60,6 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
             calendar = createCalendar(state.selectedTime);
             initializeUi(calendar, state);
             initializeKeystate(state, ui);
+            ui.enableSelectedTimeLine();
         })
         .catch(error => console.error('Error loading events:', error));
 
