@@ -5,17 +5,27 @@ import pytz
 from app.events import CALENDAR_IDS
 
 from app.utils import week_start_end
+from debug import get_service
 from .integrations.google_calendar import get_calendar_colors, get_events
 
+# SERVICE = get_service()
 
-def init_routes(app, service):
+
+def init_routes(app):
     @app.route("/")
     def index():
         # Use render_template to serve your HTML file with events data
         return render_template("index.html")
 
+    @app.route("/api/reload_service")
+    def reload_service():
+        global SERVICE
+        SERVICE = get_service()
+        return jsonify({"message": "Service reloaded"})
+
     @app.route("/api/weekly_events")
     def weekly_events():
+        service = get_service()
         timezone_str = request.args.get("timezone")
         if timezone_str:
             try:
@@ -40,7 +50,6 @@ def init_routes(app, service):
 
     @app.route("/api/calendar_colors")
     def calendar_colors():
+        service = get_service()
         calendar_colors = get_calendar_colors(service, CALENDAR_IDS)
-        print("Calendar colors:")
-        print(calendar_colors)
         return jsonify(calendar_colors)

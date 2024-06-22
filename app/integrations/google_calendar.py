@@ -1,15 +1,29 @@
-import datetime
-import json
-import os
+import logging
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-
+from tenacity import retry, stop_after_attempt, wait_exponential
+import os
 from app.events import CALENDAR_IDS, Event
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+def make_api_call(func, *args, **kwargs):
+    try:
+        return func(*args, **kwargs)
+    except HttpError as e:
+        logger.error(f"HTTP Error occurred: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error occurred: {e}")
+        raise
 
 
 def get_service():
@@ -21,11 +35,15 @@ def get_service():
 def load_or_refresh_credentials():
     creds = None
     if os.path.exists("oauth.json"):
+        print("Found oauth.json")
         creds = Credentials.from_authorized_user_file("oauth.json", SCOPES)
     if not creds or not creds.valid:
+        print("Credentials not valid")
         if creds and creds.expired and creds.refresh_token:
+            print(f"Credentials expired on {creds.expiry}, refreshing")
             creds.refresh(Request())
         else:
+            print("No valid refresh token, recreating credentials")
             flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
             creds = flow.run_local_server(port=0)
             with open("oauth.json", "w") as token:
@@ -35,7 +53,7 @@ def load_or_refresh_credentials():
 
 def get_calendar_colors(service, calendar_ids):
     try:
-        calendar_list = service.calendarList().list().execute()
+        calendar_list = make_api_call(service.calendarList().list().execute)
         calendar_colors = {}
         for calendar in calendar_list.get("items", []):
             calendar_id = calendar["id"]
@@ -48,10 +66,10 @@ def get_calendar_colors(service, calendar_ids):
                     calendar_colors[calendar_name] = bg_color
         return calendar_colors
     except HttpError as error:
-        print(f"An HTTP error occurred: {error}")
+        print(f"An HTTP error occurred in get_calendar_colors: {error}")
         return None
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f"An unexpected error occurred in get_calendar_colors: {e}")
         return None
 
 
@@ -60,11 +78,11 @@ def get_events(service, start: str, end: str) -> list[Event]:
 
     def batch_callback(request_id, response, exception):
         if exception is not None:
-            print(f"An error occurred: {exception}")
-        else:
-            calendar_name = (
-                request_id  # Assuming request_id can be used to track calendar name
+            logger.error(
+                f"Error fetching events for calendar {request_id}: {exception}"
             )
+        else:
+            calendar_name = request_id  # Using request_id to track calendar name
             all_events.extend(
                 [
                     Event.from_gcal_event(event, calendar_name)

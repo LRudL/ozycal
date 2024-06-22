@@ -10,13 +10,9 @@ def create_app():
 
     with open("api.json", "r") as file:
         api_data = json.load(file)
-        api_key = api_data
-
-    # Initialize Google Calendar Service
-    service = get_service()
 
     from .routes import init_routes
 
-    init_routes(app, service)
+    init_routes(app)
 
     return app

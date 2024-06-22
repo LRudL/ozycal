@@ -69,9 +69,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     eventsPromise.then(() => {
         colorsPromise.then(calendarColors => {
-            console.log(111)
-            console.log(state.events)
-            console.log(ui.interface)
             ui.setCalendarColors(calendarColors);
         });
     });
