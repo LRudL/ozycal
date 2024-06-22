@@ -1,5 +1,5 @@
 
-import {moveSelectedTime, setSelectedTimeToBoundOf, moveSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow} from "./actions.js"
+import {moveSelectedTime, setSelectedTimeToBoundOf, moveSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent} from "./actions.js"
 
 class Keybind {
     constructor(keyseq, action, modecheck) {
@@ -37,28 +37,28 @@ let keybinds = [
         if (modecheck_time(state, ui)) {
             moveSelectedTime(state, ui, -1, 0, 0)
         } else if (modecheck_event(state, ui)) {
-            setSelectedEventFromTimeDelta(state, ui, -1, 0, 0)
+            setSelectedEventFromTimeDelta(state, ui, -1, 0, 0, "center")
         }
     }),
     new Keybind("l", (state, ui) => {
         if (modecheck_time(state, ui)) {
             moveSelectedTime(state, ui, 1, 0, 0)
         } else if (modecheck_event(state, ui)) {
-            setSelectedEventFromTimeDelta(state, ui, 1, 0, 0)
+            setSelectedEventFromTimeDelta(state, ui, 1, 0, 0, "center")
         }
     }),
     new Keybind("w", (state, ui) => {
         if (modecheck_time(state, ui)) {
             moveSelectedTime(state, ui, 0, 1, 0)
         } else if (modecheck_event(state, ui)) {
-            moveSelectedEvent(state, ui, 1)
+            gotoNextContiguousBlockStartEvent(state, ui, state.selectedEvent)
         }
     }),
     new Keybind("b", (state, ui) => {
         if (modecheck_time(state, ui)) {
             moveSelectedTime(state, ui, 0, -1, 0)
         } else if (modecheck_event(state, ui)) {
-            moveSelectedEvent(state, ui, -1)
+            gotoCurrentContiguousBlockStartEvent(state, ui, state.selectedEvent)
         }
     }),
     new Keybind("0", (state, ui) => {

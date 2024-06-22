@@ -25,7 +25,8 @@ document.addEventListener('DOMContentLoaded', function() {
             initialView: 'timeGridWeek',
             firstDay: 1,
             eventClick: function(info) {
-                state.selectedEvent = info.event;
+                state.selectedEvent = state.getEventFromId(info.event._def.publicId);
+                // ^ this is some fullcalendar randomness; info.event is not the same as the event object
                 state.selectedTime = new Date(state.selectedEvent.end);
                 ui.updateSelectedTimeLine(state.selectedTime);
                 calendar.render();

@@ -14,7 +14,7 @@
 }
 
 .fc-event.selected-time {
-    background-color: orange;
+    background-color: black;
     border: none;
     height: 3px; /* Adjust the height to make it look like a line */
     margin: 0;

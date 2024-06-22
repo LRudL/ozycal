@@ -37,6 +37,49 @@ export function setSelectedTimeToBoundOf(state, ui, bound="start", time="day") {
     ui.updateSelectedTimeLine(state.selectedTime);
 }
 
+export function gotoNextContiguousBlockStartEvent(state, ui, event) {
+    // analogous to "w" in vim
+    state.selectedEvent = state.getNextNoncontiguousEvent(event);
+
+    state.updateSelectedTimeFromSelectedEvent();
+    ui.updateSelectedEvent(state.selectedEvent);
+}
+
+export function gotoCurrentContiguousBlockStartEvent(state, ui, event) {
+    // analogous to "b" in vim
+    // (if already at the first event in the contiguous block, then jump to the first in the previous block)
+    var contiguousEvents = state.getContiguousEvents(state.selectedEvent);
+    if (contiguousEvents[0].id == state.selectedEvent.id) {
+        var previousNoncontiguous = state.getPreviousNoncontiguousEvent(state.selectedEvent.start);
+        state.selectedEvent = state.getContiguousEvents(previousNoncontiguous)[0];
+    } else {
+        state.selectedEvent = contiguousEvents[0];
+    }
+
+
+    state.updateSelectedTimeFromSelectedEvent();
+    ui.updateSelectedEvent(state.selectedEvent);
+}
+
+export function jumpBetweenContiguousBlocks(state, ui, time, direction) {
+    switch (direction) {
+        case "forward":
+            state.selectedEvent = state.getNextNoncontiguousEvent(time);
+            break;
+        case "backward":
+            state.selectedEvent = state.getPreviousNoncontiguousEvent(time);
+            break;
+        default:
+            console.error("direction in jumpBetweenContiguousBlocks must be 'forward' or 'backward'");
+            break;
+    }
+}
+
+export function jumpBetweenContiguousBlocksFromEvent(state, ui, event, direction) {
+    var time = new Date(event.start);
+    jumpBetweenContiguousBlocks(state, ui, time, direction);
+}
+
 export function moveSelectedEvent(state, ui, jump=1) {
     var currentIndex = state.events.findIndex(event => event.id === state.selectedEvent.id);
     var newIndex = currentIndex + jump;
@@ -48,34 +91,14 @@ export function moveSelectedEvent(state, ui, jump=1) {
     ui.updateSelectedEvent(state.selectedEvent);
 }
 
-export function setSelectedEventFromTime(state, ui, time) {
+export function setSelectedEventFromTime(state, ui, time, metric="start") {
     var targetTime = new Date(time);
-    state.selectedEvent = state.getClosestEvent(targetTime);
-
+    state.selectedEvent = state.getEventFromTime(targetTime, metric);
     state.updateSelectedTimeFromSelectedEvent();
     ui.updateSelectedEvent(state.selectedEvent);
 }
 
-export function selectFirstEventStartingAfter(state, ui, time) {
-    eventsAfter = state.events.filter(event => event.start > time);
-    if (eventsAfter.length > 0) {
-        state.selectedEvent = eventsAfter[0];
-    }
-    state.updateSelectedTimeFromSelectedEvent();
-    ui.updateSelectedEvent(state.selectedEvent);
-}
-
-export function selectFirstEventBefore(state, ui, time) {
-    eventsBefore = state.events.filter(event => event.start < time);
-    if (eventsBefore.length > 0) {
-        state.selectedEvent = eventsBefore[eventsBefore.length - 1];
-    }
-    state.updateSelectedTimeFromSelectedEvent();
-    ui.updateSelectedEvent(state.selectedEvent);
-}
-        
-
-export function setSelectedEventFromTimeSet(state, ui, date=undefined, hour=undefined, minute=undefined, metric="closest") {
+export function setSelectedEventFromTimeSet(state, ui, date=undefined, hour=undefined, minute=undefined, metric="start") {
     if (date === undefined) {
         date = state.selectedTime.getDate();
     }
@@ -85,21 +108,19 @@ export function setSelectedEventFromTimeSet(state, ui, date=undefined, hour=unde
     if (minute === undefined) {
         minute = state.selectedTime.getMinutes();
     }
-    if (metric == "closest") {
-        var targetTime = new Date(date, hour, minute);
-        setSelectedEventFromTime(state, ui, targetTime);
-    } else if (metric == "after") {
-        var targetTime = new Date(date, hour, minute);
-        selectFirstEventStartingAfter(state, ui, targetTime);
-    }
+    var targetTime = new Date(state.selectedTime);
+    targetTime.setDate(date);
+    targetTime.setHours(hour);
+    targetTime.setMinutes(minute);
+    setSelectedEventFromTime(state, ui, targetTime, metric);
 }
 
-export function setSelectedEventFromTimeDelta(state, ui, days=0, hours=0, minutes=0) {
+export function setSelectedEventFromTimeDelta(state, ui, days=0, hours=0, minutes=0, metric="start") {
     var targetTime = new Date(state.selectedTime);
     targetTime.setDate(targetTime.getDate() + days);
     targetTime.setHours(targetTime.getHours() + hours);
     targetTime.setMinutes(targetTime.getMinutes() + minutes);
-    setSelectedEventFromTime(state, ui, targetTime);
+    setSelectedEventFromTime(state, ui, targetTime, metric);
 }
 
 export function enableTimeMode(state, ui) {
