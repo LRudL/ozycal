@@ -22,3 +22,7 @@ __pycache__/
 
 # .vscode
 .vscode/
+
+# js
+node_modules
+app/static/dist

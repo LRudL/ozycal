@@ -1,4 +1,4 @@
-import {initializeSelectedTime, timeConvert} from "./utils.js"
+import {initializeSelectedTime, timeConvert} from "./utils.ts"
 
 export let state = {
     currentMode: 'time',

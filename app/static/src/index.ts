@@ -1,6 +1,6 @@
-import {state, initializeState} from "./state.js"
-import {ui, initializeUi} from "./ui.js"
-import {keystate, initializeKeystate} from "./keys.js"
+import {state, initializeState} from "./state.ts"
+import {ui, initializeUi} from "./ui.ts"
+import {keystate, initializeKeystate} from "./keys.ts"
 window.state = state // this is useful so that it shows up in browser console when debugging
 window.ui = ui
 window.keystate = keystate

@@ -5,8 +5,11 @@ import pytz
 from app.events import CALENDAR_IDS
 
 from app.utils import week_start_end
-from debug import get_service
-from .integrations.google_calendar import get_calendar_colors, get_events
+from app.integrations.google_calendar import (
+    get_calendar_colors,
+    get_events,
+    get_service,
+)
 
 # SERVICE = get_service()
 

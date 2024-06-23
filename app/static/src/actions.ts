@@ -1,4 +1,4 @@
-import {initializeSelectedTime, timeConvert} from "./utils.js"
+import {initializeSelectedTime, timeConvert} from "./utils.ts"
 
 export function moveSelectedTime(state, ui, days=0, hours=0, minutes=0) {
     state.selectedTime.setDate(state.selectedTime.getDate() + days);
