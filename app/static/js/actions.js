@@ -1,4 +1,4 @@
-import {initializeSelectedTime} from "./utils.js"
+import {initializeSelectedTime, timeConvert} from "./utils.js"
 
 export function moveSelectedTime(state, ui, days=0, hours=0, minutes=0) {
     state.selectedTime.setDate(state.selectedTime.getDate() + days);
@@ -48,36 +48,67 @@ export function gotoNextContiguousBlockStartEvent(state, ui, event) {
 export function gotoCurrentContiguousBlockStartEvent(state, ui, event) {
     // analogous to "b" in vim
     // (if already at the first event in the contiguous block, then jump to the first in the previous block)
-    var contiguousEvents = state.getContiguousEvents(state.selectedEvent);
-    if (contiguousEvents[0].id == state.selectedEvent.id) {
-        var previousNoncontiguous = state.getPreviousNoncontiguousEvent(state.selectedEvent.start);
+    var contiguousEvents = state.getContiguousEvents(event);
+    if (contiguousEvents[0].id == event.id) {
+        var previousNoncontiguous = state.getPreviousNoncontiguousEvent(event.start);
         state.selectedEvent = state.getContiguousEvents(previousNoncontiguous)[0];
     } else {
         state.selectedEvent = contiguousEvents[0];
     }
 
+    state.updateSelectedTimeFromSelectedEvent();
+    ui.updateSelectedEvent(state.selectedEvent);
+}
+
+export function gotoCurrentContiguousBlockEndEvent(state, ui, event) {
+    // analogous to "e" in vim
+    var contiguousEvents = state.getContiguousEvents(event);
+    if (contiguousEvents[contiguousEvents.length - 1].id == event.id) {
+        var nextNoncontiguous = state.getNextNoncontiguousEvent(event);
+        console.log(nextNoncontiguous)
+        state.selectedEvent = state.getContiguousEvents(nextNoncontiguous)[0];
+    } else {
+        state.selectedEvent = contiguousEvents[contiguousEvents.length - 1];
+    }
 
     state.updateSelectedTimeFromSelectedEvent();
     ui.updateSelectedEvent(state.selectedEvent);
 }
 
-export function jumpBetweenContiguousBlocks(state, ui, time, direction) {
-    switch (direction) {
-        case "forward":
-            state.selectedEvent = state.getNextNoncontiguousEvent(time);
-            break;
-        case "backward":
-            state.selectedEvent = state.getPreviousNoncontiguousEvent(time);
-            break;
-        default:
-            console.error("direction in jumpBetweenContiguousBlocks must be 'forward' or 'backward'");
-            break;
+export function gotoNextContiguousBlockBound(state, ui, time) {
+    // analogous to "}" in vim
+    var eventsContaining = state.getEventsContaining(time);
+    if (eventsContaining.length > 0) {
+        var contiguousEvents = state.getContiguousEvents(eventsContaining[0]);
+        if (time.getTime() == timeConvert(contiguousEvents[contiguousEvents.length - 1].end).getTime()) {
+            state.selectedTime = timeConvert(state.getNextEvent(time).start);
+        } else {
+            state.selectedTime = timeConvert(contiguousEvents[contiguousEvents.length - 1].end);
+        }
+    } else {
+        state.selectedTime = timeConvert(state.getNextEvent(time).start);
     }
+
+    state.updateSelectedEventFromSelectedTime();
+    ui.updateSelectedTimeLine(state.selectedTime);
 }
 
-export function jumpBetweenContiguousBlocksFromEvent(state, ui, event, direction) {
-    var time = new Date(event.start);
-    jumpBetweenContiguousBlocks(state, ui, time, direction);
+export function gotoPreviousContiguousBlockBound(state, ui, time) {
+    // analogous to "{" in vim
+    var eventsContaining = state.getEventsContaining(time);
+    if (eventsContaining.length > 0) {
+        var contiguousEvents = state.getContiguousEvents(eventsContaining[0]);
+        if (time.getTime() == timeConvert(contiguousEvents[0].start).getTime()) {
+            state.selectedTime = timeConvert(state.getPreviousEvent(time).end);
+        } else {
+            state.selectedTime = timeConvert(contiguousEvents[0].start);
+        }
+    } else {
+        state.selectedTime = timeConvert(state.getPreviousEvent(time).end);
+    }
+
+    state.updateSelectedEventFromSelectedTime();
+    ui.updateSelectedTimeLine(state.selectedTime);
 }
 
 export function moveSelectedEvent(state, ui, jump=1) {
@@ -173,6 +204,7 @@ export function deleteEventFlow(state, ui, event) {
     let yes = ui.promptUser("Do you want to delete the event with title " + event.title + "?\n'y' to confirm, anything else to cancel.");
     if (yes && yes.length > 0 && yes[0] == "y") {
         state.deleteEvent(event);
+        ui.interface.getEventById(event.id).remove();
         return true;
     } else {
         return false;

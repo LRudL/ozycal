@@ -161,6 +161,7 @@ export let state = {
     },
     getNextNoncontiguousEvent(event) {
         var contiguousEvents = this.getContiguousEvents(event);
+        console.assert(contiguousEvents.length > 0, "contiguousEvents is empty");
         var nextEvent = this.getNextEvent(contiguousEvents[contiguousEvents.length - 1].end);
         return nextEvent;
     },
@@ -205,7 +206,6 @@ export let state = {
         }
         console.assert(!this.editedEvents.created.some(e => e.id === event.id), "deleted event is in editedEvents.created");
         console.assert(!this.editedEvents.modified.some(e => e.id === event.id), "deleted event is in editedEvents.modified");
-        calendar.getEventById(event.id).remove();
     },
     sortEvents() {
         this.events.sort((a, b) => new Date(a.start) - new Date(b.start));
