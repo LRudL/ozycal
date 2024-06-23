@@ -1,6 +1,13 @@
 import {initializeSelectedTime, timeConvert} from "./utils.ts"
 import {IState, IEventObj} from "./types.ts"
 
+export class NoEventsFound extends Error {
+    constructor(message = "No events found") {
+        super(message);
+        this.name = "NoEventsFound";
+    }
+}
+
 export class State implements IState {
     currentMode: string;
     events: IEventObj[];
@@ -22,12 +29,6 @@ export class State implements IState {
         };
         this.selectedTime = initializeSelectedTime(time);
         this.selectedEvent = null;
-    }
-
-    checkWellFormedness() {
-        console.assert(this.currentMode === 'time' || this.currentMode === 'event', "currentMode is not set to 'time' or 'event' but instead: " + this.currentMode);
-        console.assert(this.selectedEvent !== undefined, "selectedEvent is undefined");
-        console.assert(this.selectedTime !== undefined, "selectedTime is undefined");
     }
 
     getNextEvent(time: Date | string, on_fail="return_best", comparison = ">") {
@@ -147,7 +148,11 @@ export class State implements IState {
     }
 
     getEventFromId(id: string) {
-        return this.events.find(e => e.id === id);
+        let event = this.events.find(e => e.id === id);
+        if (event == undefined) {
+            return null;
+        }
+        return event;
     }
 
     _expandContiguousBlock(contiguousEvents: IEventObj[], event: IEventObj, dir: string) {
@@ -196,6 +201,9 @@ export class State implements IState {
     getPreviousNoncontiguousEvent(time: Date | string) {
         let t = timeConvert(time);
         let event = this.getEventFromTime(t, "containing_or_before");
+        if (event == null) {
+            return null;
+        }
         let contiguousEvents = this.getContiguousEvents(event);
         let previousEvent = this.getPreviousEvent(contiguousEvents[0].start);
         return previousEvent;

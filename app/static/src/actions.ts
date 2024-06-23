@@ -1,5 +1,6 @@
 import {initializeSelectedTime, timeConvert} from "./utils.ts"
 import { IState, IUI, IEventObj } from "./types.ts";
+import { NoEventsFound } from "./state.ts";
 
 export function moveSelectedTime(state: IState, ui: IUI, days=0, hours=0, minutes=0) {
     state.selectedTime.setDate(state.selectedTime.getDate() + days);
@@ -78,16 +79,21 @@ export function gotoCurrentContiguousBlockEndEvent(state: IState, ui: IUI, event
 
 export function gotoNextContiguousBlockBound(state: IState, ui: IUI, time: Date) {
     // analogous to "}" in vim
-    var eventsContaining = state.getEventsContaining(time);
+    let eventsContaining = state.getEventsContaining(time);
+    let nextEvent = state.getNextEvent(time)
+    if (nextEvent == null) {
+        console.error("Cannot gotoNextContiguousBlockBound when no next event is found. This should imply that there are no events loaded.");
+        return;
+    }
     if (eventsContaining.length > 0) {
         var contiguousEvents = state.getContiguousEvents(eventsContaining[0]);
         if (time.getTime() == timeConvert(contiguousEvents[contiguousEvents.length - 1].end).getTime()) {
-            state.selectedTime = timeConvert(state.getNextEvent(time).start);
+            state.selectedTime = timeConvert(nextEvent.start);
         } else {
             state.selectedTime = timeConvert(contiguousEvents[contiguousEvents.length - 1].end);
         }
     } else {
-        state.selectedTime = timeConvert(state.getNextEvent(time).start);
+        state.selectedTime = timeConvert(nextEvent.start);
     }
 
     state.updateSelectedEventFromSelectedTime();
@@ -96,16 +102,21 @@ export function gotoNextContiguousBlockBound(state: IState, ui: IUI, time: Date)
 
 export function gotoPreviousContiguousBlockBound(state: IState, ui: IUI, time: Date) {
     // analogous to "{" in vim
-    var eventsContaining = state.getEventsContaining(time);
+    let eventsContaining = state.getEventsContaining(time);
+    let previousEvent = state.getPreviousEvent(time);
+    if (previousEvent == null) {
+        console.error("Cannot gotoPreviousContiguousBlockBound when no previous event is found. This should imply that there are no events loaded.");
+        return;
+    }
     if (eventsContaining.length > 0) {
         var contiguousEvents = state.getContiguousEvents(eventsContaining[0]);
         if (time.getTime() == timeConvert(contiguousEvents[0].start).getTime()) {
-            state.selectedTime = timeConvert(state.getPreviousEvent(time).end);
+            state.selectedTime = timeConvert(previousEvent.end);
         } else {
             state.selectedTime = timeConvert(contiguousEvents[0].start);
         }
     } else {
-        state.selectedTime = timeConvert(state.getPreviousEvent(time).end);
+        state.selectedTime = timeConvert(previousEvent.end);
     }
 
     state.updateSelectedEventFromSelectedTime();
@@ -157,11 +168,18 @@ export function enableTimeMode(state: IState, ui: IUI) {
 
 export function enableEventMode(state: IState, ui: IUI) {
     var containingEvents = state.getEventsContaining(state.selectedTime)
+    let foundEvent : IEventObj | null;
     if (containingEvents.length > 0) {
-        state.selectedEvent = containingEvents[0];
+        foundEvent = containingEvents[0];
     } else {
-        state.selectedEvent = state.getNextEvent(state.selectedTime);
+        // If there is no next event, this will still return an event
+        // (it is only empty if no events exist)
+        foundEvent = state.getNextEvent(state.selectedTime);
     }
+    if (foundEvent == null) {
+        throw new NoEventsFound();
+    }
+    state.selectedEvent = foundEvent;
     state.updateSelectedTimeFromSelectedEvent();
     ui.disableSelectedTimeLine();
 }

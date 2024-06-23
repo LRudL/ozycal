@@ -1,42 +1,37 @@
+import { Calendar, EventContentArg, EventClickArg } from '@fullcalendar/core';
+import timeGridPlugin from '@fullcalendar/timegrid';
+
 import {State} from "./state.ts"
 import {UI} from "./ui.ts"
 import {KeyState} from "./keys.ts"
-import { ICalendar, IState, IUI } from "./types.ts";
+import { ICalendar, IEventObj, IState, IUI } from "./types.ts";
 
-let calendar : ICalendar;
-let state : IState;
-let ui : IUI;
-let keystate : KeyState;
-window.state = state // this is useful so that it shows up in browser console when debugging
-window.ui = ui
-window.keystate = keystate
-
-function eventClassNames(arg) {
-    var event = arg.event;
-    var classNames = [];
-    if (state.currentMode === 'event' && state.selectedEvent && event.id === state.selectedEvent.id) {
-        classNames.push('fc-event-selected');
-    }
-    return classNames;
+interface EventClassNamesArg {
+    event: IEventObj;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    var calendarEl = document.getElementById('calendar');
-
-    function createCalendar(time: Date) {
-        calendar = new FullCalendar.Calendar(calendarEl, {
+    function createCalendar(time: Date, state: IState) {
+        function eventClassNames(arg: EventContentArg) {
+            var event = arg.event;
+            var classNames = [];
+            if (state.currentMode === 'event' && state.selectedEvent && event.id === state.selectedEvent.id) {
+                classNames.push('fc-event-selected');
+            }
+            return classNames;
+        }
+        var calendarEl = document.getElementById('calendar');
+        if (calendarEl == null) {
+            throw new Error("Calendar element not found");
+        }
+        let calendar = new Calendar(calendarEl, {
             initialView: 'timeGridWeek',
+            plugins: [timeGridPlugin],
             firstDay: 1,
-            eventClick: function(info) {
-                state.selectedEvent = state.getEventFromId(info.event._def.publicId);
-                // ^ this is some fullcalendar randomness; info.event is not the same as the event object
-                state.selectedTime = new Date(state.selectedEvent.end);
-                ui.updateSelectedTimeLine(state.selectedTime);
-                calendar.render();
-            },
+            // eventClick: null, // this is set below
             eventClassNames: eventClassNames,
             nowIndicator: true,
-            now: new Date(),
+            now: time,
             height: "auto",
             headerToolbar: false
         });
@@ -47,25 +42,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const eventsPromise = fetch(`/api/weekly_events?timezone=${encodeURIComponent(userTimezone)}`)
-        .then(response => response.json())
-        .then(eventsReceived => {
-            state = new State(new Date());
-            state.importEvents(eventsReceived);
-            calendar = createCalendar(state.selectedTime);
-            ui = new UI(calendar, state);
-            keystate = new KeyState(state, ui);
-            document.addEventListener('keydown', keystate.handleKeyPress.bind(keystate));
-            ui.enableSelectedTimeLine();
-        })
-        .catch(error => console.error('Error loading events:', error));
+        .then(response => response.json());
 
     const colorsPromise = fetch(`/api/calendar_colors`)
         .then(response => response.json())
         .catch(error => console.error('Error loading calendar colors:', error));
 
-    eventsPromise.then(() => {
-        colorsPromise.then(calendarColors => {
-            ui.setCalendarColors(calendarColors);
-        });
-    });
+    Promise.all([eventsPromise, colorsPromise])
+        .then(([eventsReceived, calendarColors]) => {
+            let state = new State(new Date());
+            state.importEvents(eventsReceived);
+            let calendar = createCalendar(state.selectedTime, state);
+            let ui = new UI(calendar, state);
+            calendar.setOption("eventClick", function(info: EventClickArg) {
+                state.selectedEvent = state.getEventFromId(info.event.id);
+                if (state.selectedEvent != null) {
+                    state.selectedTime = new Date(state.selectedEvent.end);
+                }
+                ui.updateSelectedTimeLine(state.selectedTime);
+                calendar.render();
+            });
+            let keystate = new KeyState(state, ui);
+            document.addEventListener('keydown', keystate.handleKeyPress.bind(keystate));
+            ui.enableSelectedTimeLine();
+            // This is useful so that these variables show up in the browser console when debugging
+            (window as any).state = state; 
+            (window as any).ui = ui;
+            (window as any).keystate = keystate;
+            (window as any).calendar = calendar;
+
+            if (calendarColors) {
+                ui.setCalendarColors(calendarColors);
+            }
+        })
+        .catch(error => console.error('Error loading data:', error));
 });

@@ -1,4 +1,4 @@
-import {ICalendar, IState, IUI} from "./types";
+import {ICalendar, IEventObj, IState, IUI} from "./types";
 
 
 export class UI implements IUI {
@@ -69,9 +69,9 @@ export class UI implements IUI {
         this.interface?.render();
     }
 
-    updateSelectedEvent() {
+    updateSelectedEvent(event: IEventObj | null) {
         // this does nothing because currently handled by fullcalendar magic
-        this.interface?.render();
+        this.interface.render();
         return;
     }
 

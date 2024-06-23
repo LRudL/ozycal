@@ -1,4 +1,5 @@
 import {moveSelectedTime, setSelectedTimeToBoundOf, moveSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet} from "./actions.ts"
+import { NoEventsFound } from "./state.ts";
 import { IState, IUI } from "./types.ts";
 
 class Keybind {
@@ -98,7 +99,17 @@ let keybinds = [
             setSelectedEventFromTimeSet(state, ui, undefined, 23, 59, "before")
         }
     }),
-    new Keybind("t", (state, ui) => toggleBetweenTimeAndEventMode(state, ui)),
+    new Keybind("t", (state, ui) => {
+        try {
+            toggleBetweenTimeAndEventMode(state, ui)
+        } catch (e) {
+            if (e instanceof NoEventsFound) {
+                alert("Cannot switch to events mode because no events are loaded!")
+            }
+            // otherwise display error normally:
+            console.error(e);
+        }
+    }),
     new Keybind("i", (state, ui) => {
         if (state.selectedTime instanceof Date) {
             const oneHourBefore = new Date(state.selectedTime.getTime() - 60 * 60 * 1000);
