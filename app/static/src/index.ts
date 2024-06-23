@@ -1,14 +1,12 @@
-import { Calendar, EventContentArg, EventClickArg } from '@fullcalendar/core';
+import { Calendar, EventContentArg, EventClickArg, EventChangeArg } from '@fullcalendar/core';
 import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin, { EventDragStopArg } from '@fullcalendar/interaction'; // Add this import
+
 
 import {State} from "./state.ts"
 import {UI} from "./ui.ts"
 import {KeyState} from "./keys.ts"
 import { ICalendar, IEventObj, IState, IUI } from "./types.ts";
-
-interface EventClassNamesArg {
-    event: IEventObj;
-}
 
 document.addEventListener('DOMContentLoaded', function() {
     function createCalendar(time: Date, state: IState) {
@@ -26,14 +24,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         let calendar = new Calendar(calendarEl, {
             initialView: 'timeGridWeek',
-            plugins: [timeGridPlugin],
+            plugins: [timeGridPlugin, interactionPlugin],
             firstDay: 1,
             // eventClick: null, // this is set below
             eventClassNames: eventClassNames,
             nowIndicator: true,
             now: time,
             height: "auto",
-            headerToolbar: false
+            headerToolbar: false,
+            editable: true,
+            eventStartEditable: true,
+            eventResizableFromStart: true,
+            eventDurationEditable: true,
+            snapDuration: "00:15:00"
         });
         calendar.addEventSource(state.events);
         calendar.render()
@@ -50,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     Promise.all([eventsPromise, colorsPromise])
         .then(([eventsReceived, calendarColors]) => {
+            let isInitialLoad = true;
             let state = new State(new Date());
             state.importEvents(eventsReceived);
             let calendar = createCalendar(state.selectedTime, state);
@@ -61,6 +65,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 ui.updateSelectedTimeLine(state.selectedTime);
                 calendar.render();
+            });
+            calendar.setOption("eventChange", function(info: EventChangeArg) {
+                if (isInitialLoad) {
+                    // otherwise, eventChange will be triggered during event import for each event
+                    return;
+                }
+                const updatedEvent = info.event;
+                const stateEvent = state.getEventFromId(updatedEvent.id);
+                let props : Partial<IEventObj> = {}
+                if (stateEvent != null) {
+                    if (updatedEvent.start != null && updatedEvent.start.getTime() != new Date(stateEvent.start).getTime()) {
+                        props["start"] = updatedEvent.start.toISOString();
+                    }
+                    if (updatedEvent.end != null && updatedEvent.end.getTime() != new Date(stateEvent.end).getTime()) {
+                        props["end"] = updatedEvent.end.toISOString();
+                    }
+                }
+                if (Object.keys(props).length > 0) {
+                    state.modifyEvent(updatedEvent.id, props);
+                }
             });
             let keystate = new KeyState(state, ui);
             document.addEventListener('keydown', keystate.handleKeyPress.bind(keystate));
@@ -74,6 +98,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (calendarColors) {
                 ui.setCalendarColors(calendarColors);
             }
+            isInitialLoad = false;
         })
         .catch(error => console.error('Error loading data:', error));
 });
+

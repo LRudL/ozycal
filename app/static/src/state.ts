@@ -236,6 +236,18 @@ export class State implements IState {
         return newEvent;
     }
 
+    modifyEvent(id: string, props: Partial<IEventObj>) {
+        let event = this.getEventFromId(id);
+        if (event == null) {
+            throw new Error("Event not found");
+        }
+        Object.assign(event, props);
+        // if an event with this id exists in this.editedEvents.modified, then delete that from modified:
+        this.editedEvents.modified = this.editedEvents.modified.filter(e => e.id !== id);
+        this.editedEvents.modified.push(event);
+        this.sortEvents();
+    }
+
     deleteEvent(event: IEventObj) {
         this.events.splice(this.events.indexOf(event), 1);
         if (this.editedEvents.created.some(e => e.id === event.id)) {

@@ -16,7 +16,7 @@ export interface ICalendar {
 
 export interface IState {
     currentMode: string;
-    events: any[];
+    events: IEventObj[];
     editedEvents: {
         created: any[];
         deleted: any[];
