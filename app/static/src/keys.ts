@@ -1,8 +1,11 @@
-
-import {moveSelectedTime, setSelectedTimeToBoundOf, moveSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound} from "./actions.ts"
+import {moveSelectedTime, setSelectedTimeToBoundOf, moveSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet} from "./actions.ts"
+import { IState, IUI } from "./types.ts";
 
 class Keybind {
-    constructor(keyseq, action, modecheck) {
+    keyseq: string[];
+    action: (state: IState, ui: IUI) => void;
+
+    constructor(keyseq: string | string[], action: (state: IState, ui: IUI) => void) {
         // if keyseq is a string, make it a list of characters:
         if (typeof keyseq === 'string') {
             this.keyseq = keyseq.split('');
@@ -10,13 +13,12 @@ class Keybind {
             this.keyseq = keyseq;
         }
         this.action = action;
-        this.modecheck = modecheck;
     }
 }
 
 
-let modecheck_time = (state, ui) => state.currentMode === 'time'
-let modecheck_event = (state, ui) => state.currentMode === 'event'
+const modecheck_time = (state: IState, ui: IUI) => state.currentMode === 'time'
+const modecheck_event = (state: IState, ui: IUI) => state.currentMode === 'event'
 
 let keybinds = [
     new Keybind("j", (state, ui) => {
@@ -97,33 +99,43 @@ let keybinds = [
         }
     }),
     new Keybind("t", (state, ui) => toggleBetweenTimeAndEventMode(state, ui)),
-    new Keybind("i", (state, ui) => addEventFlow(state, ui, state.selectedTime - 60 * 60 * 1000, state.selectedTime)),
+    new Keybind("i", (state, ui) => {
+        if (state.selectedTime instanceof Date) {
+            const oneHourBefore = new Date(state.selectedTime.getTime() - 60 * 60 * 1000);
+            addEventFlow(state, ui, oneHourBefore, state.selectedTime);
+        }
+    }),
     new Keybind("a", (state, ui) => addEventAfterFlow(state, ui)),
     new Keybind("d", (state, ui) => deleteEventFlow(state, ui, state.selectedEvent)),
 ]
 
-export let keystate = {
-    seq: [],
-    ui: undefined,
-    getValid: function() {
-        let valid = keybinds.filter((keybind) => keybind.keyseq.length >= this.seq.length && keybind.keyseq.every((c, i) => c == this.seq[i]))
-        return valid
-    },
-    handleKeyPress: function(event) {
+export class KeyState {
+    seq: string[];
+    ui: IUI;
+    state: IState;
+
+    constructor(state: IState, ui: IUI) {
+        this.seq = [];
+        this.ui = ui;
+        this.state = state;
+    }
+
+    getValid() {
+        let valid = keybinds.filter((keybind) => keybind.keyseq.length >= this.seq.length && keybind.keyseq.every((c, i) => c == this.seq[i]));
+        return valid;
+    }
+
+    handleKeyPress(event: KeyboardEvent) {
         var key = event.key;
         this.seq.push(key);
-        let valid_keybindings = this.getValid()
+        let valid_keybindings = this.getValid();
         if (valid_keybindings.length == 1) {
-            valid_keybindings[0].action(state, ui)
-            this.seq = []
+            valid_keybindings[0].action(this.state, this.ui);
+            this.seq = [];
         } else if (valid_keybindings.length == 0) {
-            this.seq = []
+            this.seq = [];
         }
     }
-}
-
-export function initializeKeystate(state, ui) {
-    keystate.ui = ui
 }
 
 // TODO:

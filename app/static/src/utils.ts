@@ -1,16 +1,16 @@
 
-export function initializeSelectedTime(now, round_direction="forward") {
+export function initializeSelectedTime(now: Date, round_direction="forward") {
     if (now == undefined) now = new Date();
-    var minutes;
+    var minutes : number;
     if (round_direction == "forward") {
-        var minutes = Math.ceil(now.getMinutes() / 15) * 15;
+        minutes = Math.ceil(now.getMinutes() / 15) * 15;
     } else {
-        var minutes = Math.floor(now.getMinutes() / 15) * 15;
+        minutes = Math.floor(now.getMinutes() / 15) * 15;
     }
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), minutes);
 }
 
-export function timeConvert(time) {
+export function timeConvert(time: Date | string) {
     // if time is a string, convert to a date
     // if time is a date, keep as is
     if (time instanceof Date) {

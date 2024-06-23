@@ -1,30 +1,46 @@
 import {initializeSelectedTime, timeConvert} from "./utils.ts"
+import {IState, IEventObj} from "./types.ts"
 
-export let state = {
-    currentMode: 'time',
-    events: [],
+export class State implements IState {
+    currentMode: string;
+    events: IEventObj[];
     editedEvents: {
-        "created": [],
-        "deleted": [],
-        "modified": []
-    },
-    selectedTime: initializeSelectedTime(),
-    selectedEvent: null,
-    checkWellFormedness: function() {
+        created: IEventObj[];
+        deleted: IEventObj[];
+        modified: IEventObj[];
+    };
+    selectedTime: Date;
+    selectedEvent: IEventObj | null;
+
+    constructor(time: Date) {
+        this.currentMode = 'time';
+        this.events = [];
+        this.editedEvents = {
+            created: [],
+            deleted: [],
+            modified: []
+        };
+        this.selectedTime = initializeSelectedTime(time);
+        this.selectedEvent = null;
+    }
+
+    checkWellFormedness() {
         console.assert(this.currentMode === 'time' || this.currentMode === 'event', "currentMode is not set to 'time' or 'event' but instead: " + this.currentMode);
         console.assert(this.selectedEvent !== undefined, "selectedEvent is undefined");
         console.assert(this.selectedTime !== undefined, "selectedTime is undefined");
-    },
-    getNextEvent(time, on_fail="return_best", comparison = ">") {
+    }
+
+    getNextEvent(time: Date | string, on_fail="return_best", comparison = ">") {
         time = timeConvert(time);
+        let comparison_fn;
         if (comparison == ">") {
-            var comparison_fn = (t0, t1) => t0 > t1;
+            comparison_fn = (t0: Date, t1: Date) => t0 > t1;
         } else if (comparison == ">=") {
-            var comparison_fn = (t0, t1) => t0 >= t1;
+            comparison_fn = (t0: Date, t1: Date) => t0 >= t1;
         } else {
             throw new Error("Invalid comparison: " + comparison);
         }
-        for (var i = 0; i < this.events.length; i++) {
+        for (let i = 0; i < this.events.length; i++) {
             if (comparison_fn(new Date(this.events[i].start), time)) {
                 return this.events[i];
             }
@@ -36,17 +52,19 @@ export let state = {
         } else {
             throw new Error("Invalid on_fail in state.getNextEvent: " + on_fail);
         }
-    },
-    getPreviousEvent(time, on_fail="return_best", comparison = "<") {
+    }
+
+    getPreviousEvent(time : Date | string, on_fail="return_best", comparison = "<") {
         time = timeConvert(time);
+        let comparison_fn;
         if (comparison == "<") {
-            var comparison_fn = (t0, t1) => t0 < t1;
+            comparison_fn = (t0: Date, t1: Date) => t0 < t1;
         } else if (comparison == "<=") {
-            var comparison_fn = (t0, t1) => t0 <= t1;
+            comparison_fn = (t0: Date, t1: Date) => t0 <= t1;
         } else {
             throw new Error("Invalid comparison: " + comparison);
         }
-        for (var i = this.events.length - 1; i >= 0; i--) {
+        for (let i = this.events.length - 1; i >= 0; i--) {
             if (comparison_fn(new Date(this.events[i].end), time)) {
                 return this.events[i];
             }
@@ -58,54 +76,59 @@ export let state = {
         } else {
             throw new Error("Invalid on_fail in state.getPreviousEvent: " + on_fail);
         }
-    },
-    getEventsContaining(time) {
+    }
+
+    getEventsContaining(time: Date | string) {
         // Returns a list of events containing `time`, sorted in order of start time
-        var eventsContaining = [];
-        for (var i = 0; i < this.events.length; i++) {
-            if (new Date(this.events[i].start) <= time && new Date(this.events[i].end) >= time) {
+        let t = timeConvert(time);
+        let eventsContaining = [];
+        for (let i = 0; i < this.events.length; i++) {
+            if (new Date(this.events[i].start) <= t && new Date(this.events[i].end) >= t) {
                 eventsContaining.push(this.events[i]);
             }
         }
         return eventsContaining;
-    },
-    getEventsOverlappingRange(start, end) {
-        start = timeConvert(start);
-        end = timeConvert(end);
-        return this.events.filter(e => (new Date(e.start) <= end) && (new Date(e.end) >= start));
-    },
-    getEventsWithinRange(start, end) {
-        start = timeConvert(start);
-        end = timeConvert(end);
-        return this.events.filter(e => (new Date(e.start) >= start) && (new Date(e.end) <= end));
-    },
-    getClosestEvent(time, metric_fn = (event) => event.start) {
+    }
+
+    getEventsOverlappingRange(start: Date | string, end: Date | string) {
+        let tstart = timeConvert(start);
+        let tend = timeConvert(end);
+        return this.events.filter(e => (new Date(e.start) <= tend) && (new Date(e.end) >= tstart));
+    }
+
+    getEventsWithinRange(start: Date | string, end: Date | string) {
+        let tstart = timeConvert(start);
+        let tend = timeConvert(end);
+        return this.events.filter(e => (new Date(e.start) >= tstart) && (new Date(e.end) <= tend));
+    }
+
+    getClosestEvent(time: Date | string, metric_fn = (event: IEventObj) => event.start) {
         // Gets the event whose center is closest in time to the given time
         // if type is a date, do nothing; if it's a string, convert to a date:
-        if (typeof time === "string") {
-            time = new Date(time);
-        }
-        var closestEvent = this.events[0];
-        var minTimeDiff = Math.abs(new Date(metric_fn(closestEvent)) - time);
-        for (var i = 1; i < this.events.length; i++) {
-            var timeDiff = Math.abs(new Date(metric_fn(this.events[i])) - time);
+        let t = timeConvert(time);
+        let closestEvent = this.events[0];
+        let minTimeDiff = Math.abs(new Date(metric_fn(closestEvent)).getTime() - t.getTime());
+        for (let i = 1; i < this.events.length; i++) {
+            let timeDiff = Math.abs(new Date(metric_fn(this.events[i])).getTime() - t.getTime());
             if (timeDiff < minTimeDiff) {
                 closestEvent = this.events[i];
                 minTimeDiff = timeDiff;
             }
         }
         return closestEvent;
-    },
-    getEventFromTime(targetTime, metric="start") {
+    }
+
+    getEventFromTime(targetTimeArg: Date | string, metric="start") {
+        let targetTime = timeConvert(targetTimeArg);
         switch (metric) {
             case "start":
-                return state.getClosestEvent(targetTime, (event) => event.start);
+                return this.getClosestEvent(targetTime, (event) => event.start);
             case "center":
-                return state.getClosestEvent(targetTime, (event) => new Date((new Date(event.start).getTime() + new Date(event.end).getTime()) / 2).toISOString());
+                return this.getClosestEvent(targetTime, (event) => new Date((new Date(event.start).getTime() + new Date(event.end).getTime()) / 2).toISOString());
             case "after":
-                return state.getNextEvent(targetTime);
+                return this.getNextEvent(targetTime);
             case "before":
-                return state.getPreviousEvent(targetTime);
+                return this.getPreviousEvent(targetTime);
             case "containing_or_after":
                 if (this.getEventsContaining(targetTime).length > 0) {
                     return this.getEventsContaining(targetTime)[0];
@@ -121,23 +144,26 @@ export let state = {
             default:
                 throw new Error("Invalid metric: " + metric);
         }
-    },
-    getEventFromId(id) {
+    }
+
+    getEventFromId(id: string) {
         return this.events.find(e => e.id === id);
-    },
-    _expandContiguousBlock(contiguousEvents, event, dir) {
-        var time = dir == "forward" ? new Date(event.end) : new Date(event.start);
-        var newEvents = this.getEventsContaining(time);
+    }
+
+    _expandContiguousBlock(contiguousEvents: IEventObj[], event: IEventObj, dir: string) {
+        let time = dir == "forward" ? new Date(event.end) : new Date(event.start);
+        let newEvents = this.getEventsContaining(time);
         if (dir == "forward") {
-            newEvents = newEvents.sort((a, b) => new Date(b.end) - new Date(a.end));
+            newEvents = newEvents.sort((a, b) => new Date(b.end).getTime() - new Date(a.end).getTime());
         } // else, newEvents is already sorted in increasing order of start time
         newEvents = newEvents.filter(e => !contiguousEvents.includes(e));
         return newEvents;
-    },
-    getContiguousEvents(event) {
-        var contiguousEvents = [event];
-        var extremalEvent = event
-        var newEvents = []
+    }
+
+    getContiguousEvents(event: IEventObj) {
+        let contiguousEvents = [event];
+        let extremalEvent = event;
+        let newEvents = [];
         do {
             newEvents = this._expandContiguousBlock(contiguousEvents, extremalEvent, "forward");
             if (newEvents.length > 0) {
@@ -154,27 +180,34 @@ export let state = {
                 contiguousEvents = newEvents.concat(contiguousEvents);
             }
         } while (newEvents.length > 0);
-        contiguousEvents = contiguousEvents.sort((a, b) => new Date(a.start) - new Date(b.start));
+        contiguousEvents = contiguousEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
         // Now at this point, we know our events span the full range of times in this contiguous block.
         // But what if there was a small event within another event at some point?
         return this.getEventsOverlappingRange(contiguousEvents[0].start, contiguousEvents[contiguousEvents.length - 1].end);
-    },
-    getNextNoncontiguousEvent(event) {
-        var contiguousEvents = this.getContiguousEvents(event);
+    }
+
+    getNextNoncontiguousEvent(event: IEventObj) {
+        let contiguousEvents = this.getContiguousEvents(event);
         console.assert(contiguousEvents.length > 0, "contiguousEvents is empty");
-        var nextEvent = this.getNextEvent(contiguousEvents[contiguousEvents.length - 1].end);
+        let nextEvent = this.getNextEvent(contiguousEvents[contiguousEvents.length - 1].end);
         return nextEvent;
-    },
-    getPreviousNoncontiguousEvent(time) {
-        time = timeConvert(time);
-        var event = this.getEventFromTime(time, "containing_or_before");
-        var contiguousEvents = this.getContiguousEvents(event);
-        var previousEvent = this.getPreviousEvent(contiguousEvents[0].start);
+    }
+
+    getPreviousNoncontiguousEvent(time: Date | string) {
+        let t = timeConvert(time);
+        let event = this.getEventFromTime(t, "containing_or_before");
+        let contiguousEvents = this.getContiguousEvents(event);
+        let previousEvent = this.getPreviousEvent(contiguousEvents[0].start);
         return previousEvent;
-    },
-    addEvent(start, end, title, id=undefined) {
+    }
+
+    importEvents(events: IEventObj[]) {
+        this.events = this.events.concat(events);
+        this.sortEvents();
+    }
+    addEvent(start: Date | string, end: Date | string, title: string, id?: string) {
         if (id == undefined) {
-            id = "created:" + Math.random().toString(36).substring(2, 15)
+            id = "created:" + Math.random().toString(36).substring(2, 15);
         }
         // if start and end are Dates rather than strings, convert to isoformat string:
         if (start instanceof Date) {
@@ -188,13 +221,14 @@ export let state = {
             start: start,
             end: end,
             title: title
-        }
+        };
         this.events.push(newEvent);
-        this.sortEvents()
-        this.editedEvents.created.push(newEvent)
+        this.sortEvents();
+        this.editedEvents.created.push(newEvent);
         return newEvent;
-    },
-    deleteEvent(event) {
+    }
+
+    deleteEvent(event: IEventObj) {
         this.events.splice(this.events.indexOf(event), 1);
         if (this.editedEvents.created.some(e => e.id === event.id)) {
             this.editedEvents.created = this.editedEvents.created.filter(e => e.id !== event.id);
@@ -206,26 +240,24 @@ export let state = {
         }
         console.assert(!this.editedEvents.created.some(e => e.id === event.id), "deleted event is in editedEvents.created");
         console.assert(!this.editedEvents.modified.some(e => e.id === event.id), "deleted event is in editedEvents.modified");
-    },
+    }
+
     sortEvents() {
-        this.events.sort((a, b) => new Date(a.start) - new Date(b.start));
-    },
+        this.events.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    }
+
     updateSelectedEventFromSelectedTime() {
-        var eventsContainingSelectedTime = this.getEventsContaining(this.selectedTime);
+        let eventsContainingSelectedTime = this.getEventsContaining(this.selectedTime);
         if (eventsContainingSelectedTime.length > 0) {
             this.selectedEvent = eventsContainingSelectedTime[0];
         } else {
             this.selectedEvent = this.getNextEvent(this.selectedTime);
         }
-    },
-    updateSelectedTimeFromSelectedEvent() {
-        this.selectedTime = initializeSelectedTime(new Date(this.selectedEvent.end));
     }
 
+    updateSelectedTimeFromSelectedEvent() {
+        if (this.selectedEvent !== null) {
+            this.selectedTime = initializeSelectedTime(new Date(this.selectedEvent.end));
+        }
+    }
 };
-
-export function initializeState(state, time) {
-    state.selectedTime = initializeSelectedTime(time);
-    state.selectedEvent = state.getNextEvent(state.selectedTime);
-    state.checkWellFormedness();
-}

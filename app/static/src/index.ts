@@ -1,12 +1,15 @@
-import {state, initializeState} from "./state.ts"
-import {ui, initializeUi} from "./ui.ts"
-import {keystate, initializeKeystate} from "./keys.ts"
+import {State} from "./state.ts"
+import {UI} from "./ui.ts"
+import {KeyState} from "./keys.ts"
+import { ICalendar, IState, IUI } from "./types.ts";
+
+let calendar : ICalendar;
+let state : IState;
+let ui : IUI;
+let keystate : KeyState;
 window.state = state // this is useful so that it shows up in browser console when debugging
 window.ui = ui
 window.keystate = keystate
-
-var calendar;
-
 
 function eventClassNames(arg) {
     var event = arg.event;
@@ -20,7 +23,7 @@ function eventClassNames(arg) {
 document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
 
-    function createCalendar(time) {
+    function createCalendar(time: Date) {
         calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'timeGridWeek',
             firstDay: 1,
@@ -42,19 +45,16 @@ document.addEventListener('DOMContentLoaded', function() {
         return calendar;
     }
 
-    document.addEventListener('keydown', keystate.handleKeyPress.bind(keystate));
-
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const eventsPromise = fetch(`/api/weekly_events?timezone=${encodeURIComponent(userTimezone)}`)
         .then(response => response.json())
         .then(eventsReceived => {
-            state.events = eventsReceived; // this variable is used by createCalendar
-            // sort the events by .start
-            state.sortEvents();
-            initializeState(state, new Date());
+            state = new State(new Date());
+            state.importEvents(eventsReceived);
             calendar = createCalendar(state.selectedTime);
-            initializeUi(calendar, state);
-            initializeKeystate(state, ui);
+            ui = new UI(calendar, state);
+            keystate = new KeyState(state, ui);
+            document.addEventListener('keydown', keystate.handleKeyPress.bind(keystate));
             ui.enableSelectedTimeLine();
         })
         .catch(error => console.error('Error loading events:', error));
