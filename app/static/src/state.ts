@@ -55,15 +55,12 @@ export class State implements IState {
 
         this.editedEvents = {
             created: createReactiveArray([], (newArray) => {
-                console.log("CHANGE TO CREATED EVENTS");
                 this.uiUpdateTriggers.editedEventsUpdate({...this.editedEvents, created: newArray});
             }),
             deleted: createReactiveArray([], (newArray) => {
-                console.log("CHANGE TO DELETED EVENTS");
                 this.uiUpdateTriggers.editedEventsUpdate({...this.editedEvents, deleted: newArray});
             }),
             modified: createReactiveArray([], (newArray) => {
-                console.log("CHANGE TO MODIFIED EVENTS");
                 this.uiUpdateTriggers.editedEventsUpdate({...this.editedEvents, modified: newArray});
             })
         };
@@ -287,10 +284,21 @@ export class State implements IState {
             throw new Error("Event not found");
         }
         Object.assign(event, props);
-        // if an event with this id exists in this.editedEvents.modified, then delete that from modified:
-        this.editedEvents.modified = this.editedEvents.modified.filter(e => e.id !== id);
-        this.editedEvents.modified.push(event);
         this.sortEvents();
+        // if this event is in the created events, then we don't need to add it to the modified events list:
+        if (this.editedEvents.created.some(e => e.id === id)) {
+            return;
+        }
+
+        // if an event with this id exists in this.editedEvents.modified, then delete that from modified:
+        const index = this.editedEvents.modified.findIndex(e => e.id === id);
+        if (index !== -1) { // IMPORTANT: these are in-place updates, since we need any bound UI update function to trigger (see constructor)
+            // If the event is already in modified, update it in place
+            this.editedEvents.modified.splice(index, 1, event);
+        } else {
+            // If the event is not in modified, add it
+            this.editedEvents.modified.push(event);
+        }
     }
 
     deleteEvent(event: IEventObj) {

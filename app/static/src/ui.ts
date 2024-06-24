@@ -34,10 +34,10 @@ export class UI implements IUI {
         } else {
             throw new Error("UI cannot handle the mode: " + mode);
         }
+        this.updateStatusBarSelected();
     }
 
     editedEventsUpdate(editedEvents: { created: IEventObj[], modified: IEventObj[], deleted: IEventObj[] }) {
-        console.log("editedEventsUpdate", editedEvents);
         this.updateStatusBarEdits();
     }
 
@@ -120,7 +120,7 @@ export class UI implements IUI {
         // get td element with id "modecol"
         let modecol = document.getElementById("modecol");
         if (modecol) {
-            modecol.innerText = this.state.selected.mode;
+            modecol.innerText = "Mode: " + this.state.selected.mode;
         }
     }
 
@@ -134,7 +134,14 @@ export class UI implements IUI {
     updateStatusBarSelected() {
         let timecol = document.getElementById("selectedcol");
         if (timecol) {
-            timecol.innerText = "Selected: " + this.state.selected.time.toISOString().split("T")[0] + " " + this.state.selected.time.toLocaleTimeString().slice(0, 5) + " | " + (this.state.selected.event ? this.state.selected.event.title : "(NO EVENT SELECTED)");
+            let selectedTimeText = this.state.selected.time.toISOString().split("T")[0] + " " + this.state.selected.time.toLocaleTimeString().slice(0, 5);
+            let selectedEventText = this.state.selected.event ? this.state.selected.event.title : "(NO EVENT SELECTED)";
+            if (this.state.selected.mode == "time") {
+                selectedTimeText = "<b>" + selectedTimeText + "</b>";
+            } else if (this.state.selected.mode == "event") {
+                selectedEventText = "<b>" + selectedEventText + "</b>";
+            }
+            timecol.innerHTML = "Selected: " + selectedTimeText + " | " + selectedEventText;
         }
     }
 
