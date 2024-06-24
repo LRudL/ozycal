@@ -15,15 +15,23 @@ export interface ICalendar {
 }
 
 export interface IState {
-    currentMode: string;
     events: IEventObj[];
+    selected: {
+        mode: string,
+        time: Date,
+        event: null | IEventObj
+    },
     editedEvents: {
-        created: any[];
-        deleted: any[];
-        modified: any[];
+        created: IEventObj[];
+        deleted: IEventObj[];
+        modified: IEventObj[];
     };
-    selectedTime: Date;
-    selectedEvent: any;
+    uiUpdateTriggers: {
+        selectedModeUpdate: (mode: string) => void;
+        selectedTimeUpdate: (time: Date) => void;
+        selectedEventUpdate: (event: IEventObj | null) => void;
+        editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void;
+    };
     importEvents: (events: IEventObj[]) => void;
     getNextEvent: (time: Date | string, on_fail?: string, comparison?: string) => IEventObj | null;
     getPreviousEvent: (time: Date | string, on_fail?: string, comparison?: string) => IEventObj | null;
@@ -56,4 +64,22 @@ export interface IUI {
     updateSelectedEvent(event: IEventObj | null): void;
     promptUserForEventName(): string;
     addEvent(newEvent: any): void;
+    updateStatusBar(keystate: IKeyState | null): void;
+    updateStatusBarMode(): void;
+    updateStatusBarKey(keystate: IKeyState): void;
+    updateStatusBarSelected(): void;
+    updateStatusBarEdits(): void;
+}
+
+export interface IKeybind {
+    keyseq: string[];
+    action: (state: IState, ui: IUI) => void;
+}
+
+export interface IKeyState {
+    seq: string[];
+    ui: IUI;
+    state: IState;
+    getValid(): IKeybind[];
+    handleKeyPress(key: KeyboardEvent): void;
 }

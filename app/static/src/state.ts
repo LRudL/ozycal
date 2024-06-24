@@ -1,4 +1,4 @@
-import {initializeSelectedTime, timeConvert} from "./utils.ts"
+import {createReactiveArray, createReactiveState, initializeSelectedTime, timeConvert} from "./utils.ts"
 import {IState, IEventObj} from "./types.ts"
 
 export class NoEventsFound extends Error {
@@ -9,26 +9,71 @@ export class NoEventsFound extends Error {
 }
 
 export class State implements IState {
-    currentMode: string;
+    selected: {
+        mode: string;
+        time: Date;
+        event: IEventObj | null;
+    };
+    uiUpdateTriggers: {
+        selectedModeUpdate: (mode: string) => void;
+        selectedTimeUpdate: (time: Date) => void;
+        selectedEventUpdate: (event: IEventObj | null) => void;
+        editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void;
+    };
     events: IEventObj[];
     editedEvents: {
         created: IEventObj[];
         deleted: IEventObj[];
         modified: IEventObj[];
     };
-    selectedTime: Date;
-    selectedEvent: IEventObj | null;
 
-    constructor(time: Date) {
-        this.currentMode = 'time';
+    constructor(time: Date, ) {
         this.events = [];
-        this.editedEvents = {
-            created: [],
-            deleted: [],
-            modified: []
+        this.uiUpdateTriggers = {
+            selectedModeUpdate: () => {},
+            selectedTimeUpdate: () => {},
+            selectedEventUpdate: () => {},
+            editedEventsUpdate: () => {}
         };
-        this.selectedTime = initializeSelectedTime(time);
-        this.selectedEvent = null;
+        this.selected = createReactiveState({
+            mode: 'time',
+            time: initializeSelectedTime(time),
+            event: null
+        }, (property, value) => {
+            switch (property) {
+                case "mode":
+                    this.uiUpdateTriggers.selectedModeUpdate(value as string);
+                    break;
+                case "time":
+                    this.uiUpdateTriggers.selectedTimeUpdate(value as Date);
+                    break;
+                case "event":
+                    this.uiUpdateTriggers.selectedEventUpdate(value as IEventObj | null);
+                    break;
+            }
+        });
+
+        this.editedEvents = {
+            created: createReactiveArray([], (newArray) => {
+                console.log("CHANGE TO CREATED EVENTS");
+                this.uiUpdateTriggers.editedEventsUpdate({...this.editedEvents, created: newArray});
+            }),
+            deleted: createReactiveArray([], (newArray) => {
+                console.log("CHANGE TO DELETED EVENTS");
+                this.uiUpdateTriggers.editedEventsUpdate({...this.editedEvents, deleted: newArray});
+            }),
+            modified: createReactiveArray([], (newArray) => {
+                console.log("CHANGE TO MODIFIED EVENTS");
+                this.uiUpdateTriggers.editedEventsUpdate({...this.editedEvents, modified: newArray});
+            })
+        };
+    }
+
+    connectUI(selectedModeUpdate: (mode: string) => void, selectedTimeUpdate: (time: Date) => void, selectedEventUpdate: (event: IEventObj | null) => void, editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void) {
+        this.uiUpdateTriggers.selectedModeUpdate = selectedModeUpdate;
+        this.uiUpdateTriggers.selectedTimeUpdate = selectedTimeUpdate;
+        this.uiUpdateTriggers.selectedEventUpdate = selectedEventUpdate;
+        this.uiUpdateTriggers.editedEventsUpdate = editedEventsUpdate;
     }
 
     getNextEvent(time: Date | string, on_fail="return_best", comparison = ">") {
@@ -260,6 +305,11 @@ export class State implements IState {
         }
         console.assert(!this.editedEvents.created.some(e => e.id === event.id), "deleted event is in editedEvents.created");
         console.assert(!this.editedEvents.modified.some(e => e.id === event.id), "deleted event is in editedEvents.modified");
+
+        // update selected event:
+        if (this.selected.event !== null && this.selected.event.id == event.id) {
+            this.updateSelectedEventFromSelectedTime();
+        }
     }
 
     sortEvents() {
@@ -267,17 +317,17 @@ export class State implements IState {
     }
 
     updateSelectedEventFromSelectedTime() {
-        let eventsContainingSelectedTime = this.getEventsContaining(this.selectedTime);
+        let eventsContainingSelectedTime = this.getEventsContaining(this.selected.time);
         if (eventsContainingSelectedTime.length > 0) {
-            this.selectedEvent = eventsContainingSelectedTime[0];
+            this.selected.event = eventsContainingSelectedTime[0];
         } else {
-            this.selectedEvent = this.getNextEvent(this.selectedTime);
+            this.selected.event = this.getNextEvent(this.selected.time);
         }
     }
 
     updateSelectedTimeFromSelectedEvent() {
-        if (this.selectedEvent !== null) {
-            this.selectedTime = initializeSelectedTime(new Date(this.selectedEvent.end));
+        if (this.selected.event !== null) {
+            this.selected.time = initializeSelectedTime(new Date(this.selected.event.end));
         }
     }
 };

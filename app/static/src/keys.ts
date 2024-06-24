@@ -1,8 +1,8 @@
-import {moveSelectedTime, setSelectedTimeToBoundOf, moveSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet} from "./actions.ts"
+import {moveSelectedTime, setSelectedTimeToBoundOf, changeSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet} from "./actions.ts"
 import { NoEventsFound } from "./state.ts";
-import { IState, IUI } from "./types.ts";
+import { IKeyState, IKeybind, IState, IUI } from "./types.ts";
 
-class Keybind {
+class Keybind implements IKeybind {
     keyseq: string[];
     action: (state: IState, ui: IUI) => void;
 
@@ -18,22 +18,22 @@ class Keybind {
 }
 
 
-const modecheck_time = (state: IState, ui: IUI) => state.currentMode === 'time'
-const modecheck_event = (state: IState, ui: IUI) => state.currentMode === 'event'
+const modecheck_time = (state: IState, ui: IUI) => state.selected.mode === 'time'
+const modecheck_event = (state: IState, ui: IUI) => state.selected.mode === 'event'
 
 let keybinds = [
     new Keybind("j", (state, ui) => {
         if (modecheck_time(state, ui)) {
             moveSelectedTime(state, ui, 0, 0, 15)   
         } else if (modecheck_event(state, ui)) {
-            moveSelectedEvent(state, ui, 1)
+            changeSelectedEvent(state, ui, state.selected.event, 1)
         }
     }),
     new Keybind("k", (state, ui) => {
         if (modecheck_time(state, ui)) {
             moveSelectedTime(state, ui, 0, 0, -15)
         } else if (modecheck_event(state, ui)) {
-            moveSelectedEvent(state, ui, -1)
+            changeSelectedEvent(state, ui, state.selected.event, -1)
         }
     }),
     new Keybind("h", (state, ui) => {
@@ -54,35 +54,35 @@ let keybinds = [
         if (modecheck_time(state, ui)) {
             moveSelectedTime(state, ui, 0, 1, 0)
         } else if (modecheck_event(state, ui)) {
-            gotoNextContiguousBlockStartEvent(state, ui, state.selectedEvent)
+            gotoNextContiguousBlockStartEvent(state, ui, state.selected.event)
         }
     }),
     new Keybind("b", (state, ui) => {
         if (modecheck_time(state, ui)) {
             moveSelectedTime(state, ui, 0, -1, 0)
         } else if (modecheck_event(state, ui)) {
-            gotoCurrentContiguousBlockStartEvent(state, ui, state.selectedEvent)
+            gotoCurrentContiguousBlockStartEvent(state, ui, state.selected.event)
         }
     }),
     new Keybind("e", (state, ui) => {
         if (modecheck_time(state, ui)) {
             setSelectedTimeToBoundOf(state, ui, "end", "hour")
         } else if (modecheck_event(state, ui)) {
-            gotoCurrentContiguousBlockEndEvent(state, ui, state.selectedEvent)
+            gotoCurrentContiguousBlockEndEvent(state, ui, state.selected.event)
         }
     }),
     new Keybind("}", (state, ui) => {
         if (modecheck_time(state, ui)) {
-            gotoNextContiguousBlockBound(state, ui, state.selectedTime)
+            gotoNextContiguousBlockBound(state, ui, state.selected.time)
         } else if (modecheck_event(state, ui)) {
-            gotoNextContiguousBlockStartEvent(state, ui, state.selectedEvent)
+            gotoNextContiguousBlockStartEvent(state, ui, state.selected.event)
         }
     }),
     new Keybind("{", (state, ui) => {
         if (modecheck_time(state, ui)) {
-            gotoPreviousContiguousBlockBound(state, ui, state.selectedTime)
+            gotoPreviousContiguousBlockBound(state, ui, state.selected.time)
         } else if (modecheck_event(state, ui)) {
-            gotoCurrentContiguousBlockStartEvent(state, ui, state.selectedEvent)
+            gotoCurrentContiguousBlockStartEvent(state, ui, state.selected.event)
         }
     }),
     new Keybind("0", (state, ui) => {
@@ -111,16 +111,16 @@ let keybinds = [
         }
     }),
     new Keybind("i", (state, ui) => {
-        if (state.selectedTime instanceof Date) {
-            const oneHourBefore = new Date(state.selectedTime.getTime() - 60 * 60 * 1000);
-            addEventFlow(state, ui, oneHourBefore, state.selectedTime);
+        if (state.selected.time instanceof Date) {
+            const oneHourBefore = new Date(state.selected.time.getTime() - 60 * 60 * 1000);
+            addEventFlow(state, ui, oneHourBefore, state.selected.time);
         }
     }),
     new Keybind("a", (state, ui) => addEventAfterFlow(state, ui)),
-    new Keybind("d", (state, ui) => deleteEventFlow(state, ui, state.selectedEvent)),
+    new Keybind("d", (state, ui) => deleteEventFlow(state, ui, state.selected.event)),
 ]
 
-export class KeyState {
+export class KeyState implements IKeyState {
     seq: string[];
     ui: IUI;
     state: IState;
@@ -146,8 +146,6 @@ export class KeyState {
         } else if (valid_keybindings.length == 0) {
             this.seq = [];
         }
+        this.ui.updateStatusBarKey(this);
     }
 }
-
-// TODO:
-// - keypress ui tooltip

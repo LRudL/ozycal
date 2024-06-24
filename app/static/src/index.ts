@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
         function eventClassNames(arg: EventContentArg) {
             var event = arg.event;
             var classNames = [];
-            if (state.currentMode === 'event' && state.selectedEvent && event.id === state.selectedEvent.id) {
+            if (state.selected.mode === 'event' && state.selected.event && event.id === state.selected.event.id) {
                 classNames.push('fc-event-selected');
             }
             return classNames;
@@ -56,14 +56,20 @@ document.addEventListener('DOMContentLoaded', function() {
             let isInitialLoad = true;
             let state = new State(new Date());
             state.importEvents(eventsReceived);
-            let calendar = createCalendar(state.selectedTime, state);
+            let calendar = createCalendar(state.selected.time, state);
             let ui = new UI(calendar, state);
+            state.connectUI(
+                ui.selectedModeUpdate.bind(ui),
+                ui.selectedTimeUpdate.bind(ui),
+                ui.selectedEventUpdate.bind(ui),
+                ui.editedEventsUpdate.bind(ui)
+            );
             calendar.setOption("eventClick", function(info: EventClickArg) {
-                state.selectedEvent = state.getEventFromId(info.event.id);
-                if (state.selectedEvent != null) {
-                    state.selectedTime = new Date(state.selectedEvent.end);
+                state.selected.event = state.getEventFromId(info.event.id);
+                if (state.selected.event != null) {
+                    state.selected.time = new Date(state.selected.event.end);
                 }
-                ui.updateSelectedTimeLine(state.selectedTime);
+                ui.updateSelectedTimeLine(state.selected.time);
                 calendar.render();
             });
             calendar.setOption("eventChange", function(info: EventChangeArg) {
@@ -98,6 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (calendarColors) {
                 ui.setCalendarColors(calendarColors);
             }
+            ui.updateStatusBar(keystate);
             isInitialLoad = false;
         })
         .catch(error => console.error('Error loading data:', error));

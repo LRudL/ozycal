@@ -2,82 +2,89 @@ import {initializeSelectedTime, timeConvert} from "./utils.ts"
 import { IState, IUI, IEventObj } from "./types.ts";
 import { NoEventsFound } from "./state.ts";
 
-export function moveSelectedTime(state: IState, ui: IUI, days=0, hours=0, minutes=0) {
-    state.selectedTime.setDate(state.selectedTime.getDate() + days);
-    state.selectedTime.setHours(state.selectedTime.getHours() + hours);
-    state.selectedTime.setMinutes(state.selectedTime.getMinutes() + minutes);
-
-    state.updateSelectedEventFromSelectedTime();
-    ui.updateSelectedTimeLine(state.selectedTime);
+function eventChangeWrapper(func: (state: IState, ui: IUI, event: IEventObj, ...args: any[]) => void) {
+    return function (state: IState, ui: IUI, event: IEventObj | null, ...args: any[]) {
+        if (event == null) {
+            console.error("eventChangeWrapper received a null event (this should not be possible)");
+            return;
+        }
+        func(state, ui, event, ...args);
+        state.updateSelectedTimeFromSelectedEvent();
+    }
 }
 
-export function setSelectedTimeToBoundOf(state: IState, ui: IUI, bound="start", time="day") {
+function timeChangeWrapper(func: (state: IState, ui: IUI, ...args: any[]) => void) {
+    return function (state: IState, ui: IUI, ...args: any[]) {
+        func(state, ui, ...args);
+        state.updateSelectedEventFromSelectedTime();
+    }
+}
+
+export let moveSelectedTime = timeChangeWrapper(function(state: IState, ui: IUI, days=0, hours=0, minutes=0) {
+    var time = new Date(state.selected.time);
+    time.setDate(time.getDate() + days);
+    time.setHours(time.getHours() + hours);
+    time.setMinutes(time.getMinutes() + minutes);
+    state.selected.time = time;
+});
+
+export let setSelectedTimeToBoundOf = timeChangeWrapper(function(state: IState, ui: IUI, bound="start", time="day") {
     console.assert(bound == "start" || bound == "end", "bound must be start or end");
     console.assert(time == "day" || time == "hour")
     switch (time) {
         case "day":
             if (bound == "start") {
-                state.selectedTime.setHours(0);
-                state.selectedTime.setMinutes(0);
+                state.selected.time.setHours(0);
+                state.selected.time.setMinutes(0);
             } else {
-                state.selectedTime.setHours(0);
-                state.selectedTime.setMinutes(0);
-                state.selectedTime.setDate(state.selectedTime.getDate() + 1);
+                state.selected.time.setHours(0);
+                state.selected.time.setMinutes(0);
+                state.selected.time.setDate(state.selected.time.getDate() + 1);
             } 
             break;
         case "hour":
             if (bound == "start") {
-                state.selectedTime.setMinutes(0);
+                state.selected.time.setMinutes(0);
             } else {
-                state.selectedTime.setMinutes(0);
-                state.selectedTime.setHours(state.selectedTime.getHours() + 1);
+                state.selected.time.setMinutes(0);
+                state.selected.time.setHours(state.selected.time.getHours() + 1);
             }
             break;
     }
+});
 
-    state.updateSelectedEventFromSelectedTime();
-    ui.updateSelectedTimeLine(state.selectedTime);
-}
-
-export function gotoNextContiguousBlockStartEvent(state: IState, ui: IUI, event: IEventObj) {
+export let gotoNextContiguousBlockStartEvent = eventChangeWrapper(function(state: IState, ui: IUI, event: IEventObj) {
     // analogous to "w" in vim
-    state.selectedEvent = state.getNextNoncontiguousEvent(event);
+    state.selected.event = state.getNextNoncontiguousEvent(event);
+});
 
-    state.updateSelectedTimeFromSelectedEvent();
-    ui.updateSelectedEvent(state.selectedEvent);
-}
-
-export function gotoCurrentContiguousBlockStartEvent(state: IState, ui: IUI, event: IEventObj) {
+export let gotoCurrentContiguousBlockStartEvent = eventChangeWrapper(function(state: IState, ui: IUI, event: IEventObj) {
     // analogous to "b" in vim
     // (if already at the first event in the contiguous block, then jump to the first in the previous block)
     var contiguousEvents = state.getContiguousEvents(event);
     if (contiguousEvents[0].id == event.id) {
         var previousNoncontiguous = state.getPreviousNoncontiguousEvent(event.start);
-        state.selectedEvent = state.getContiguousEvents(previousNoncontiguous)[0];
+        state.selected.event = state.getContiguousEvents(previousNoncontiguous)[0];
     } else {
-        state.selectedEvent = contiguousEvents[0];
+        state.selected.event = contiguousEvents[0];
     }
 
-    state.updateSelectedTimeFromSelectedEvent();
-    ui.updateSelectedEvent(state.selectedEvent);
-}
+});
 
-export function gotoCurrentContiguousBlockEndEvent(state: IState, ui: IUI, event: IEventObj) {
+export let gotoCurrentContiguousBlockEndEvent = eventChangeWrapper(function(state: IState, ui: IUI, event: IEventObj) {
     // analogous to "e" in vim
     var contiguousEvents = state.getContiguousEvents(event);
     if (contiguousEvents[contiguousEvents.length - 1].id == event.id) {
         var nextNoncontiguous = state.getNextNoncontiguousEvent(event);
         console.log(nextNoncontiguous)
-        state.selectedEvent = state.getContiguousEvents(nextNoncontiguous)[0];
+        state.selected.event = state.getContiguousEvents(nextNoncontiguous)[0];
     } else {
-        state.selectedEvent = contiguousEvents[contiguousEvents.length - 1];
+        state.selected.event = contiguousEvents[contiguousEvents.length - 1];
     }
 
-    state.updateSelectedTimeFromSelectedEvent();
-    ui.updateSelectedEvent(state.selectedEvent);
-}
+});
 
-export function gotoNextContiguousBlockBound(state: IState, ui: IUI, time: Date) {
+export let gotoNextContiguousBlockBound = timeChangeWrapper(function(state: IState, ui: IUI, time: Date) {
     // analogous to "}" in vim
     let eventsContaining = state.getEventsContaining(time);
     let nextEvent = state.getNextEvent(time)
@@ -88,19 +95,17 @@ export function gotoNextContiguousBlockBound(state: IState, ui: IUI, time: Date)
     if (eventsContaining.length > 0) {
         var contiguousEvents = state.getContiguousEvents(eventsContaining[0]);
         if (time.getTime() == timeConvert(contiguousEvents[contiguousEvents.length - 1].end).getTime()) {
-            state.selectedTime = timeConvert(nextEvent.start);
+            state.selected.time = timeConvert(nextEvent.start);
         } else {
-            state.selectedTime = timeConvert(contiguousEvents[contiguousEvents.length - 1].end);
+            state.selected.time = timeConvert(contiguousEvents[contiguousEvents.length - 1].end);
         }
     } else {
-        state.selectedTime = timeConvert(nextEvent.start);
+        state.selected.time = timeConvert(nextEvent.start);
     }
 
-    state.updateSelectedEventFromSelectedTime();
-    ui.updateSelectedTimeLine(state.selectedTime);
-}
+});
 
-export function gotoPreviousContiguousBlockBound(state: IState, ui: IUI, time: Date) {
+export let gotoPreviousContiguousBlockBound = timeChangeWrapper(function(state: IState, ui: IUI, time: Date) {
     // analogous to "{" in vim
     let eventsContaining = state.getEventsContaining(time);
     let previousEvent = state.getPreviousEvent(time);
@@ -111,92 +116,89 @@ export function gotoPreviousContiguousBlockBound(state: IState, ui: IUI, time: D
     if (eventsContaining.length > 0) {
         var contiguousEvents = state.getContiguousEvents(eventsContaining[0]);
         if (time.getTime() == timeConvert(contiguousEvents[0].start).getTime()) {
-            state.selectedTime = timeConvert(previousEvent.end);
+            state.selected.time = timeConvert(previousEvent.end);
         } else {
-            state.selectedTime = timeConvert(contiguousEvents[0].start);
+            state.selected.time = timeConvert(contiguousEvents[0].start);
         }
     } else {
-        state.selectedTime = timeConvert(previousEvent.end);
+        state.selected.time = timeConvert(previousEvent.end);
     }
 
-    state.updateSelectedEventFromSelectedTime();
-    ui.updateSelectedTimeLine(state.selectedTime);
-}
+});
 
-export function moveSelectedEvent(state: IState, ui: IUI, jump=1) {
-    var currentIndex = state.events.findIndex(event => event.id === state.selectedEvent.id);
+export let changeSelectedEvent = eventChangeWrapper(function(state: IState, ui: IUI, event: IEventObj, jump=1) {
+    var currentIndex = state.events.findIndex(event => event.id === state.selected.event?.id);
     var newIndex = currentIndex + jump;
     newIndex = Math.min(newIndex, state.events.length - 1);
     newIndex = Math.max(newIndex, 0);
-    state.selectedEvent = state.events[newIndex];
+    state.selected.event = state.events[newIndex];
+});
 
-    state.updateSelectedTimeFromSelectedEvent();
-    ui.updateSelectedEvent(state.selectedEvent);
-}
-
-export function setSelectedEventFromTime(state: IState, ui: IUI, time: Date, metric="start") {
+export let setSelectedEventFromTime = eventChangeWrapper(function(state: IState, ui: IUI, event: IEventObj, time: Date, metric="start") {
     var targetTime = new Date(time);
-    state.selectedEvent = state.getEventFromTime(targetTime, metric);
-    state.updateSelectedTimeFromSelectedEvent();
-    ui.updateSelectedEvent(state.selectedEvent);
-}
+    state.selected.event = state.getEventFromTime(targetTime, metric);
+});
 
 export function setSelectedEventFromTimeSet(state: IState, ui: IUI, date : number | null = null, hour : number | null = null, minute : number | null = null, metric = "start") {
-    let date_ = date == null ? state.selectedTime.getDate() : date;
-    let hour_ = hour == null ? state.selectedTime.getHours() : hour;
-    let minute_ = minute == null ? state.selectedTime.getMinutes() : minute;
-    var targetTime = new Date(state.selectedTime);
+    let date_ = date == null ? state.selected.time.getDate() : date;
+    let hour_ = hour == null ? state.selected.time.getHours() : hour;
+    let minute_ = minute == null ? state.selected.time.getMinutes() : minute;
+    var targetTime = new Date(state.selected.time);
     targetTime.setDate(date_);
     targetTime.setHours(hour_);
     targetTime.setMinutes(minute_);
-    setSelectedEventFromTime(state, ui, targetTime, metric);
+    setSelectedEventFromTime(state, ui, state.selected.event, targetTime, metric);
 }
 
 export function setSelectedEventFromTimeDelta(state: IState, ui: IUI, days=0, hours=0, minutes=0, metric="start") {
-    var targetTime = new Date(state.selectedTime);
+    var targetTime = new Date(state.selected.time);
     targetTime.setDate(targetTime.getDate() + days);
     targetTime.setHours(targetTime.getHours() + hours);
     targetTime.setMinutes(targetTime.getMinutes() + minutes);
-    setSelectedEventFromTime(state, ui, targetTime, metric);
+    setSelectedEventFromTime(state, ui, state.selected.event, targetTime, metric);
 }
 
 export function enableTimeMode(state: IState, ui: IUI) {
-    state.selectedTime = initializeSelectedTime(new Date(state.selectedEvent.end));
-    ui.enableSelectedTimeLine();
-    ui.updateSelectedTimeLine(state.selectedTime);
+    if (state.selected.event == null) {
+        console.error("Cannot enableTimeMode when no event is selected");
+        return;
+    }
+    state.selected.time = initializeSelectedTime(new Date(state.selected.event.end));
+    state.selected.mode = "time";
 }
 
 export function enableEventMode(state: IState, ui: IUI) {
-    var containingEvents = state.getEventsContaining(state.selectedTime)
+    var containingEvents = state.getEventsContaining(state.selected.time)
     let foundEvent : IEventObj | null;
     if (containingEvents.length > 0) {
         foundEvent = containingEvents[0];
     } else {
         // If there is no next event, this will still return an event
         // (it is only empty if no events exist)
-        foundEvent = state.getNextEvent(state.selectedTime);
+        foundEvent = state.getNextEvent(state.selected.time);
     }
     if (foundEvent == null) {
         throw new NoEventsFound();
     }
-    state.selectedEvent = foundEvent;
-    state.updateSelectedTimeFromSelectedEvent();
-    ui.disableSelectedTimeLine();
+    state.selected.event = foundEvent;
+    state.selected.mode = "event";
+    state.updateSelectedTimeFromSelectedEvent(); // it makes more sense to keep this than to wrap the function in an eventChangeWrapper
 }
 
 export function toggleBetweenTimeAndEventMode(state: IState, ui: IUI) {
-    console.assert(state.currentMode === 'time' || state.currentMode === 'event', "currentMode is not set to 'time' or 'event' but instead: " + state.currentMode);
+    console.assert(state.selected.mode === 'time' || state.selected.mode === 'event', "currentMode is not set to 'time' or 'event' but instead: " + state.selected.mode);
 
-    state.currentMode = state.currentMode === 'time' ? 'event' : 'time';
-
-    console.assert(state.selectedTime, "selectedTime is: " + state.selectedTime)
-    console.assert(state.selectedEvent, "selectedEvent is: " + state.selectedEvent)
-
-    if (state.currentMode === 'event') {
+    let currentMode = state.selected.mode;
+    if (currentMode === 'time') {
         enableEventMode(state, ui)
-    } else if (state.currentMode === 'time') {
+    } else if (currentMode === 'event') {
         enableTimeMode(state, ui)
     }
+
+    if (currentMode == state.selected.mode) {
+        console.error("toggleBetweenTimeAndEventMode failed to toggle the mode; mode stuck at: " + state.selected.mode);
+    }
+
 }
 
 export function addEventFlow(state: IState, ui: IUI, start: Date, end: Date) {
@@ -206,14 +208,17 @@ export function addEventFlow(state: IState, ui: IUI, start: Date, end: Date) {
 }
 
 export function addEventAfterFlow(state: IState, ui: IUI) {
-    var endTime = new Date(state.selectedTime);
+    var endTime = new Date(state.selected.time);
     endTime.setHours(endTime.getHours() + 1);
-    addEventFlow(state, ui, state.selectedTime, endTime);
-    state.selectedTime = endTime;
-    ui.updateSelectedTimeLine(state.selectedTime);
+    addEventFlow(state, ui, state.selected.time, endTime);
+    state.selected.time = endTime;
 }
 
-export function deleteEventFlow(state: IState, ui: IUI, event: IEventObj) {
+export function deleteEventFlow(state: IState, ui: IUI, event: IEventObj | null) {
+    if (event == null) {
+        console.error("deleteEventFlow received a null event (this should not be possible)");
+        return;
+    }
     let yes = ui.promptUser("Do you want to delete the event with title " + event.title + "?\n'y' to confirm, anything else to cancel.");
     if (yes && yes.length > 0 && yes[0] == "y") {
         state.deleteEvent(event);

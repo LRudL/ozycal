@@ -18,3 +18,44 @@ export function timeConvert(time: Date | string) {
     }
     return new Date(time);
 }
+
+type ReactiveUpdateFunctionType<T> = (property: keyof T, value: T[keyof T]) => void;
+
+export function createReactiveState<T extends object>(
+  initialState: T, 
+  updateFunction: ReactiveUpdateFunctionType<T>
+): T {
+  return new Proxy(initialState, {
+    set(target: T, property: string | symbol, value: any): boolean {
+      (target as any)[property] = value;
+      updateFunction(property as keyof T, value);
+      return true;
+    }
+  });
+}
+
+export function createReactiveArray<T>(
+  initialArray: T[],
+  updateFunction: (newArray: T[]) => void
+): T[] {
+  return new Proxy(initialArray, {
+    set(target: T[], property: string | symbol, value: any): boolean {
+      target[property as any] = value;
+      updateFunction([...target]);
+      return true;
+    },
+    get(target: T[], property: string | symbol): any {
+      const value = target[property as any];
+      if (property === 'push' || property === 'pop' || property === 'shift' || 
+          property === 'unshift' || property === 'splice' || property === 'sort' || 
+          property === 'reverse') {
+        return function(...args: any[]) {
+          const result = Array.prototype[property as any].apply(target, args);
+          updateFunction([...target]);
+          return result;
+        };
+      }
+      return value;
+    }
+  });
+}

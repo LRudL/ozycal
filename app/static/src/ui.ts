@@ -1,4 +1,4 @@
-import {ICalendar, IEventObj, IState, IUI} from "./types";
+import {ICalendar, IEventObj, IKeyState, IState, IUI} from "./types";
 
 
 export class UI implements IUI {
@@ -10,6 +10,35 @@ export class UI implements IUI {
         this.interface = calendarInterface;
         this.state = state;
         this.customCalendarColors = {};
+    }
+
+    selectedTimeUpdate(time: Date) {
+        // console.log("selectedTimeUpdate", time);
+        this.updateSelectedTimeLine(time);
+        this.updateStatusBarSelected();
+    }
+
+    selectedEventUpdate(event: IEventObj | null) {
+        // console.log("selectedEventUpdate", event);
+        this.updateSelectedEvent(event);
+        this.updateStatusBarSelected();
+    }
+
+    selectedModeUpdate(mode: string) {
+        // console.log("selectedModeUpdate", mode);
+        this.updateStatusBarMode();
+        if (mode == "time") {
+            this.enableSelectedTimeLine();
+        } else if (mode == "event") {
+            this.disableSelectedTimeLine();
+        } else {
+            throw new Error("UI cannot handle the mode: " + mode);
+        }
+    }
+
+    editedEventsUpdate(editedEvents: { created: IEventObj[], modified: IEventObj[], deleted: IEventObj[] }) {
+        console.log("editedEventsUpdate", editedEvents);
+        this.updateStatusBarEdits();
     }
 
     setCalendarColors(calendarColors: { [key: string]: string }) {
@@ -36,7 +65,7 @@ export class UI implements IUI {
     }
 
     updateSelectedTimeLine(time: Date) {
-        if (this.state?.currentMode !== "time") {
+        if (this.state.selected.mode !== "time") {
             return;
         }
         var nowLineEvent = this.interface?.getEventById('selected-time');
@@ -54,8 +83,8 @@ export class UI implements IUI {
         console.assert(this.interface?.getEventById("selected-time") == null, "selected-time event should not exist");
         this.interface?.addEvent({
             id: 'selected-time',
-            start: this.state?.selectedTime,
-            end: new Date(this.state?.selectedTime.getTime() + 60000), // 1 minute duration
+            start: this.state?.selected.time,
+            end: new Date(this.state?.selected.time.getTime() + 60000), // 1 minute duration
             className: 'selected-time',
         });
         this.interface?.render();
@@ -85,5 +114,43 @@ export class UI implements IUI {
 
     addEvent(newEvent: any) {
         this.interface?.addEvent(newEvent);
+    }
+
+    updateStatusBarMode() {
+        // get td element with id "modecol"
+        let modecol = document.getElementById("modecol");
+        if (modecol) {
+            modecol.innerText = this.state.selected.mode;
+        }
+    }
+
+    updateStatusBarKey(keystate: IKeyState) {
+        let keycol = document.getElementById("keycol");
+        if (keycol) {
+            keycol.innerText = keystate.seq.join("");
+        }
+    }
+
+    updateStatusBarSelected() {
+        let timecol = document.getElementById("selectedcol");
+        if (timecol) {
+            timecol.innerText = "Selected: " + this.state.selected.time.toISOString().split("T")[0] + " " + this.state.selected.time.toLocaleTimeString().slice(0, 5) + " | " + (this.state.selected.event ? this.state.selected.event.title : "(NO EVENT SELECTED)");
+        }
+    }
+
+    updateStatusBarEdits() {
+        let editscol = document.getElementById("editscol");
+        if (editscol) {
+            editscol.innerText = "Unsynced changes: " + this.state.editedEvents.created.length + "C | " + this.state.editedEvents.modified.length + "M | " + this.state.editedEvents.deleted.length + "D";
+        }
+    }
+
+    updateStatusBar(keystate: IKeyState | null = null) {
+        this.updateStatusBarMode();
+        if (keystate !== null) {
+            this.updateStatusBarKey(keystate);
+        }
+        this.updateStatusBarSelected();
+        this.updateStatusBarEdits();
     }
 }
