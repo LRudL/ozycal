@@ -275,6 +275,9 @@ export class State implements IState {
         this.events.push(newEvent);
         this.sortEvents();
         this.editedEvents.created.push(newEvent);
+        if (this.selected.mode == "edit") {
+            this.selected.event = newEvent;
+        }
         return newEvent;
     }
 
@@ -303,10 +306,20 @@ export class State implements IState {
 
     deleteEvent(event: IEventObj) {
         this.events.splice(this.events.indexOf(event), 1);
+        // Next, we want to update editedEvents (which has .created, .modified, and .deleted arrays)
         if (this.editedEvents.created.some(e => e.id === event.id)) {
-            this.editedEvents.created = this.editedEvents.created.filter(e => e.id !== event.id);
+            // NB: need to do edits in-place to trigger UI update functions:
+            const index = this.editedEvents.created.findIndex(e => e.id === event.id);
+            if (index !== -1) {
+                // We no longer need to create this event when syncing, so remove it from the created arary
+                this.editedEvents.created.splice(index, 1);
+            }
         } else if (this.editedEvents.modified.some(e => e.id === event.id)) {
-            this.editedEvents.modified = this.editedEvents.modified.filter(e => e.id !== event.id);
+            const index = this.editedEvents.modified.findIndex(e => e.id === event.id);
+            if (index !== -1) {
+                // We no longer need to modify this event when syncing, so remove it from the modified array
+                this.editedEvents.modified.splice(index, 1);
+            }
             this.editedEvents.deleted.push(event);
         } else {
             this.editedEvents.deleted.push(event);

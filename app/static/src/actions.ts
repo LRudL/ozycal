@@ -205,6 +205,11 @@ export function addEventFlow(state: IState, ui: IUI, start: Date, end: Date) {
     var eventName = ui.promptUserForEventName();
     var newEvent = state.addEvent(start, end, eventName);
     ui.addEvent(newEvent);
+    if (state.selected.mode == "event") {
+        state.selected.event = newEvent;
+    } else if (state.selected.mode == "time") {
+        state.selected.time = initializeSelectedTime(new Date(newEvent.end));
+    }
 }
 
 export function addEventAfterFlow(state: IState, ui: IUI) {
