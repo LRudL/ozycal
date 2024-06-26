@@ -4,6 +4,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from google.auth.exceptions import RefreshError
 from tenacity import retry, stop_after_attempt, wait_exponential
 import os
 from app.events import CALENDAR_IDS, Event
@@ -32,6 +33,7 @@ def get_service():
     return service
 
 
+
 def load_or_refresh_credentials():
     creds = None
     if os.path.exists("oauth.json"):
@@ -41,13 +43,21 @@ def load_or_refresh_credentials():
         print("Credentials not valid")
         if creds and creds.expired and creds.refresh_token:
             print(f"Credentials expired on {creds.expiry}, refreshing")
-            creds.refresh(Request())
-        else:
-            print("No valid refresh token, recreating credentials")
+            try:
+                creds.refresh(Request())
+            except RefreshError:
+                print("Refresh token is invalid, recreating credentials")
+                creds = None
+        
+        if not creds:
+            print("Creating new credentials")
             flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
             creds = flow.run_local_server(port=0)
-            with open("oauth.json", "w") as token:
-                token.write(creds.to_json())
+        
+        # Save the credentials for the next run
+        with open("oauth.json", "w") as token:
+            token.write(creds.to_json())
+    
     return creds
 
 
