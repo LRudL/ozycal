@@ -82,13 +82,19 @@ export interface IUI {
 
 export interface IKeybind {
     keyseq: string[];
-    action: (state: IState, ui: IUI) => void;
+    action: (state: IState, ui: IUI, num?: number) => void;
 }
+
+export interface IKeySeqParse {
+    number: number | boolean;
+    validKeybinds: IKeybind[];
+}
+
 
 export interface IKeyState {
     seq: string[];
     ui: IUI;
     state: IState;
-    getValid(): IKeybind[];
     handleKeyPress(key: KeyboardEvent): void;
+    parseSeq(seq: string): IKeySeqParse;
 }

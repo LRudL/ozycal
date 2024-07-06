@@ -1,13 +1,13 @@
-import {moveSelectedTime, setSelectedTimeToBoundOf, changeSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet, selectedCalendarSwitchFlow} from "./actions.ts"
+import {moveSelectedTime, setSelectedTimeToBoundOf, changeSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet, selectedCalendarSwitchFlow, jumpToTimeFromNum} from "./actions.ts"
 import { NoEventsFound } from "./state.ts";
-import { IKeyState, IKeybind, IState, IUI } from "./types.ts";
+import { IKeySeqParse, IKeyState, IKeybind, IState, IUI } from "./types.ts";
 import { MODAL_OPEN } from "./modal.ts";
 
 class Keybind implements IKeybind {
     keyseq: string[];
-    action: (state: IState, ui: IUI) => void;
+    action: (state: IState, ui: IUI, num?: number) => void;
 
-    constructor(keyseq: string | string[], action: (state: IState, ui: IUI) => void) {
+    constructor(keyseq: string | string[], action: (state: IState, ui: IUI, num?: number) => void) {
         // if keyseq is a string, make it a list of characters:
         if (typeof keyseq === 'string') {
             this.keyseq = keyseq.split('');
@@ -23,77 +23,77 @@ const modecheck_time = (state: IState, ui: IUI) => state.selected.mode === 'time
 const modecheck_event = (state: IState, ui: IUI) => state.selected.mode === 'event'
 
 let keybinds = [
-    new Keybind("j", (state, ui) => {
+    new Keybind("j", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
-            moveSelectedTime(state, ui, 0, 0, 15)   
+            moveSelectedTime(state, ui, 0, 0, num * 15)   
         } else if (modecheck_event(state, ui)) {
-            changeSelectedEvent(state, ui, state.selected.event, 1)
+            changeSelectedEvent(state, ui, state.selected.event, num)
         }
     }),
-    new Keybind("k", (state, ui) => {
+    new Keybind("k", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
-            moveSelectedTime(state, ui, 0, 0, -15)
+            moveSelectedTime(state, ui, 0, 0, -15 * num)
         } else if (modecheck_event(state, ui)) {
-            changeSelectedEvent(state, ui, state.selected.event, -1)
+            changeSelectedEvent(state, ui, state.selected.event, -num)
         }
     }),
-    new Keybind("h", (state, ui) => {
+    new Keybind("h", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
-            moveSelectedTime(state, ui, -1, 0, 0)
+            moveSelectedTime(state, ui, -1 * num, 0, 0)
         } else if (modecheck_event(state, ui)) {
-            setSelectedEventFromTimeDelta(state, ui, -1, 0, 0, "center")
+            setSelectedEventFromTimeDelta(state, ui, -1 * num, 0, 0, "center")
         }
     }),
-    new Keybind("l", (state, ui) => {
+    new Keybind("l", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
-            moveSelectedTime(state, ui, 1, 0, 0)
+            moveSelectedTime(state, ui, 1 * num, 0, 0)
         } else if (modecheck_event(state, ui)) {
-            setSelectedEventFromTimeDelta(state, ui, 1, 0, 0, "center")
+            setSelectedEventFromTimeDelta(state, ui, 1 * num, 0, 0, "center")
         }
     }),
-    new Keybind("w", (state, ui) => {
+    new Keybind("w", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
-            moveSelectedTime(state, ui, 0, 1, 0)
+            moveSelectedTime(state, ui, 0, 1 * num, 0)
         } else if (modecheck_event(state, ui)) {
             gotoNextContiguousBlockStartEvent(state, ui, state.selected.event)
         }
     }),
-    new Keybind("b", (state, ui) => {
+    new Keybind("b", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
-            moveSelectedTime(state, ui, 0, -1, 0)
+            moveSelectedTime(state, ui, 0, -1 * num, 0)
         } else if (modecheck_event(state, ui)) {
             gotoCurrentContiguousBlockStartEvent(state, ui, state.selected.event)
         }
     }),
-    new Keybind("e", (state, ui) => {
+    new Keybind("e", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
             setSelectedTimeToBoundOf(state, ui, "end", "hour")
         } else if (modecheck_event(state, ui)) {
             gotoCurrentContiguousBlockEndEvent(state, ui, state.selected.event)
         }
     }),
-    new Keybind("}", (state, ui) => {
+    new Keybind("}", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
             gotoNextContiguousBlockBound(state, ui, state.selected.time)
         } else if (modecheck_event(state, ui)) {
             gotoNextContiguousBlockStartEvent(state, ui, state.selected.event)
         }
     }),
-    new Keybind("{", (state, ui) => {
+    new Keybind("{", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
             gotoPreviousContiguousBlockBound(state, ui, state.selected.time)
         } else if (modecheck_event(state, ui)) {
             gotoCurrentContiguousBlockStartEvent(state, ui, state.selected.event)
         }
     }),
-    new Keybind("0", (state, ui) => {
+    new Keybind("0", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
             setSelectedTimeToBoundOf(state, ui, "start", "day")
         } else if (modecheck_event(state, ui)) {
             setSelectedEventFromTimeSet(state, ui, undefined, 0, 0, "after")
         }
     }),
-    new Keybind("$", (state, ui) => {
+    new Keybind("$", (state, ui, num = 1) => {
         if (modecheck_time(state, ui)) {
             setSelectedTimeToBoundOf(state, ui, "end", "day")
         } else if (modecheck_event(state, ui)) {
@@ -111,15 +111,16 @@ let keybinds = [
             console.error(e);
         }
     }),
-    new Keybind("i", (state, ui) => {
+    new Keybind("i", (state, ui, duration_in_minutes = 60) => {
         if (state.selected.time instanceof Date) {
-            const oneHourBefore = new Date(state.selected.time.getTime() - 60 * 60 * 1000);
+            const oneHourBefore = new Date(state.selected.time.getTime() - duration_in_minutes * 60 * 1000);
             addEventFlow(state, ui, oneHourBefore, state.selected.time);
         }
     }),
-    new Keybind("a", (state, ui) => addEventAfterFlow(state, ui)),
-    new Keybind("d", (state, ui) => deleteEventFlow(state, ui, state.selected.event)),
-    new Keybind("g", (state, ui) => selectedCalendarSwitchFlow(state, ui))
+    new Keybind("a", (state, ui, duration_in_minutes = 60) => addEventAfterFlow(state, ui, duration_in_minutes)),
+    new Keybind("d", (state, ui, num=1) => deleteEventFlow(state, ui, state.selected.event)),
+    new Keybind("g", (state, ui, num=9) => jumpToTimeFromNum(state, ui, num)),
+    new Keybind("s", (state, ui, quick_switch_idx=-1) => selectedCalendarSwitchFlow(state, ui, quick_switch_idx))
 ]
 
 export class KeyState implements IKeyState {
@@ -133,9 +134,33 @@ export class KeyState implements IKeyState {
         this.state = state;
     }
 
-    getValid() {
-        let valid = keybinds.filter((keybind) => keybind.keyseq.length >= this.seq.length && keybind.keyseq.every((c, i) => c == this.seq[i]));
-        return valid;
+    parseSeq(seq: string): IKeySeqParse {
+        // Takes a sequence of key presses `seq`, and parses it into an IKeySeqParse.
+        // Any numbers at the start are interpreted as a number
+        // After stripping leading digits, the `keybinds` array is searched for all that match the remaining string.
+        
+        // Find first number:
+        let numberStr = '';
+        for (let i = 0; i < seq.length; i++) {
+            if (seq[i].match(/[0-9]/)) {
+                numberStr += seq[i];
+            } else {
+                break;
+            }
+        }
+
+        let number = numberStr ? parseInt(numberStr) : false;
+        let remainingSeq = number !== false ? seq.slice(numberStr.length) : seq;
+
+        let valid = keybinds.filter((keybind) => 
+            remainingSeq.length === 0 || // Allow all keybinds if only numbers are entered
+            (keybind.keyseq.length >= remainingSeq.length && 
+             keybind.keyseq.every((c, i) => c === remainingSeq[i]))
+        );
+        return {
+            number: number,
+            validKeybinds: valid
+        }
     }
 
     handleKeyPress(event: KeyboardEvent) {
@@ -144,12 +169,16 @@ export class KeyState implements IKeyState {
         }
         var key = event.key;
         this.seq.push(key);
-        let valid_keybindings = this.getValid();
-        if (valid_keybindings.length == 1) {
+        let parsedSeq = this.parseSeq(this.seq.join(""));
+        if (parsedSeq.validKeybinds.length == 1) {
             event.preventDefault()
-            valid_keybindings[0].action(this.state, this.ui);
+            if (parsedSeq.number !== false) {
+                parsedSeq.validKeybinds[0].action(this.state, this.ui, parsedSeq.number as number);
+            } else {
+                parsedSeq.validKeybinds[0].action(this.state, this.ui);
+            }
             this.seq = [];
-        } else if (valid_keybindings.length == 0) {
+        } else if (parsedSeq.validKeybinds.length == 0) {
             this.seq = [];
         }
         this.ui.updateStatusBarKey(this);

@@ -213,9 +213,9 @@ export function addEventFlow(state: IState, ui: IUI, start: Date, end: Date) {
     }
 }
 
-export function addEventAfterFlow(state: IState, ui: IUI) {
+export function addEventAfterFlow(state: IState, ui: IUI, duration_in_minutes = 60) {
     var endTime = new Date(state.selected.time);
-    endTime.setHours(endTime.getHours() + 1);
+    endTime.setMinutes(endTime.getMinutes() + duration_in_minutes);
     addEventFlow(state, ui, state.selected.time, endTime);
     state.selected.time = endTime;
 }
@@ -235,10 +235,37 @@ export function deleteEventFlow(state: IState, ui: IUI, event: IEventObj | null)
     }
 }
  
-export async function selectedCalendarSwitchFlow(state: IState, ui: IUI) {
+export async function selectedCalendarSwitchFlow(state: IState, ui: IUI, quick_switch_idx=-1) {
+    if (quick_switch_idx !== -1) {
+        if (quick_switch_idx >= state.calendarNames.length) {
+            alert("You tried to quick-switch to calendar id " + quick_switch_idx + " but there are only " + state.calendarNames.length + " calendars loaded.");
+            return;
+        }
+        state.selected.calendar = state.calendarNames[quick_switch_idx];
+        return;
+    }
     let result: IModalResult | undefined = await ui.promptUserForSelectedCalendar();
     if (result == undefined) {
         return;
     }
     state.selected.calendar = result.calendarName;
 }
+
+
+export let jumpToTimeFromNum = timeChangeWrapper(function(state: IState, ui: IUI, jump_to: number) {
+    console.log("jumpToTimeFromNum", jump_to)
+    // interpret small numbers as hours
+    if (jump_to <= 24) {
+        let new_time = new Date(state.selected.time);
+        new_time.setHours(jump_to);
+        // special trigger logic only happens if we directly set state.selected.time (so can't use .setHours/.setMinutes/.setSeconds/.setMilliseconds)
+        state.selected.time = new_time;
+    }
+    // interpret larger numbers as hhmm
+    else if (jump_to <= 2400) {
+        let new_time = new Date(state.selected.time);
+        new_time.setHours(Math.floor(jump_to / 100));
+        new_time.setMinutes(jump_to % 100);
+        state.selected.time = new_time;
+    }
+});
