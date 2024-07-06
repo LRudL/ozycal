@@ -77,7 +77,7 @@ export interface IUI {
     updateStatusBarMode(): void;
     updateStatusBarKey(keystate: IKeyState): void;
     updateStatusBarSelected(): void;
-    updateStatusBarEdits(): void;
+    updateStatusBarEdits(flash?: boolean): void;
 }
 
 export interface IKeybind {

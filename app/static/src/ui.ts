@@ -183,10 +183,16 @@ export class UI implements IUI {
         }
     }
 
-    updateStatusBarEdits() {
+    updateStatusBarEdits(flash=false) {
         let editscol = document.getElementById("editscol");
         if (editscol) {
             editscol.innerText = "Unsynced changes: " + this.state.editedEvents.created.length + "C | " + this.state.editedEvents.modified.length + "M | " + this.state.editedEvents.deleted.length + "D";
+        }
+        if (flash && editscol) {
+            editscol.style.backgroundColor = "green";
+            setTimeout(() => {
+                editscol.style.backgroundColor = "";
+            }, 1000);
         }
     }
 

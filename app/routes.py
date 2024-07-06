@@ -9,6 +9,7 @@ from app.integrations.google_calendar import (
     get_calendar_colors,
     get_events,
     get_service,
+    make_api_call,
 )
 
 # SERVICE = get_service()
@@ -56,3 +57,75 @@ def init_routes(app):
         service = get_service()
         calendar_colors = get_calendar_colors(service, CALENDAR_IDS)
         return jsonify(calendar_colors)
+
+    @app.route("/api/update_events", methods=["POST"])
+    def update_events():
+        service = get_service()
+        data = request.json
+        
+        response = {
+            "created": [],
+            "deleted": [],
+            "modified": []
+        }
+
+        # Handle created events
+        for event in data.get("created", []):
+            calendar_id = CALENDAR_IDS.get(event["extendedProps"]["calendar"])
+            if not calendar_id:
+                continue
+            
+            new_event = {
+                "summary": event["title"],
+                "start": {"dateTime": event["start"], "timeZone": "UTC"},
+                "end": {"dateTime": event["end"], "timeZone": "UTC"},
+            }
+            
+            try:
+                created_event = make_api_call(
+                    service.events().insert(calendarId=calendar_id, body=new_event).execute
+                )
+                response["created"].append({
+                    "old_id": event["id"],
+                    "new_id": created_event["id"]
+                })
+            except Exception as e:
+                print(f"Error creating event: {e}")
+
+        # Handle deleted events
+        for event in data.get("deleted", []):
+            calendar_id = CALENDAR_IDS.get(event["extendedProps"]["calendar"])
+            if not calendar_id:
+                continue
+            
+            try:
+                make_api_call(
+                    service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute
+                )
+                response["deleted"].append(event["id"])
+            except Exception as e:
+                print(f"Error deleting event: {e}")
+
+        # Handle modified events
+        for event in data.get("modified", []):
+            calendar_id = CALENDAR_IDS.get(event["extendedProps"]["calendar"])
+            if not calendar_id:
+                continue
+            
+            updated_event = {
+                "summary": event["title"],
+                "start": {"dateTime": event["start"], "timeZone": "UTC"},
+                "end": {"dateTime": event["end"], "timeZone": "UTC"},
+            }
+            
+            try:
+                modified_event = make_api_call(
+                    service.events().update(
+                        calendarId=calendar_id, eventId=event["id"], body=updated_event
+                    ).execute
+                )
+                response["modified"].append(modified_event["id"])
+            except Exception as e:
+                print(f"Error modifying event: {e}")
+
+        return jsonify(response)

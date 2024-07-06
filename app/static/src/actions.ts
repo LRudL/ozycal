@@ -253,7 +253,6 @@ export async function selectedCalendarSwitchFlow(state: IState, ui: IUI, quick_s
 
 
 export let jumpToTimeFromNum = timeChangeWrapper(function(state: IState, ui: IUI, jump_to: number) {
-    console.log("jumpToTimeFromNum", jump_to)
     // interpret small numbers as hours
     if (jump_to <= 24) {
         let new_time = new Date(state.selected.time);
@@ -269,3 +268,61 @@ export let jumpToTimeFromNum = timeChangeWrapper(function(state: IState, ui: IUI
         state.selected.time = new_time;
     }
 });
+
+interface SyncResult {
+    created: {old_id: string, new_id: string}[];
+    deleted: string[];
+    modified: string[];
+}
+
+export let eventSyncFlow = async function(state: IState, ui: IUI) {
+    const response = await fetch('/api/update_events', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(state.editedEvents),
+    });
+
+    const result = await response.json() as SyncResult;
+    console.log("SYNC RESULT", result);
+    
+    for (let idMapping of result["created"]) {
+        let old_id = idMapping["old_id"];
+        let new_id = idMapping["new_id"];
+        let event = state.getEventFromId(old_id);
+        if (event != null) {
+            event.id = new_id;
+            state.editedEvents.created = state.editedEvents.created.filter(e => e.id != new_id);
+        } else {
+            alert("Sync anomaly: event with id " + old_id + " not found");
+        }
+    }
+
+    if (state.editedEvents.created.length > 0) {
+        alert("Sync anomaly: the following events were supposed to be created but were not present in the response from the server: " + state.editedEvents.created.map(e => e.title).join(", "));
+    }
+
+    for (let id of result["deleted"]) {
+        state.editedEvents.deleted = state.editedEvents.deleted.filter(e => e.id != id);
+    }
+
+    if (state.editedEvents.deleted.length > 0) {
+        alert("Sync anomaly: the following events were supposed to be deleted but were not present in the response from the server: " + state.editedEvents.deleted.map(e => e.title).join(", "));
+    }
+
+    for (let id of result["modified"]) {
+        state.editedEvents.modified = state.editedEvents.modified.filter(e => e.id != id);
+    }
+
+    if (state.editedEvents.modified.length > 0) {
+        alert("Sync anomaly: the following events were supposed to be modified but were not present in the response from the server: " + state.editedEvents.modified.map(e => e.title).join(", "));
+    }
+
+    if (state.editedEvents.created.length != 0 || state.editedEvents.deleted.length != 0 || state.editedEvents.modified.length != 0) {
+        console.assert(false, "Sync anomaly: there are still events in state.editedEvents after the sync");
+        ui.updateStatusBarEdits();
+    } else{
+        ui.updateStatusBarEdits(true);
+    }
+}
