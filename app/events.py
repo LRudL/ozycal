@@ -13,6 +13,7 @@ class Event:
         end: datetime.datetime,
         summary: str,
         event_id=None,
+        is_all_day=False,
     ):
         assert start <= end
         if not isinstance(start, datetime.datetime):
@@ -24,22 +25,26 @@ class Event:
         self.end = end
         self.summary = summary
         self.event_id = event_id
+        self.is_all_day = is_all_day
 
     @staticmethod
     def from_gcal_event(event: dict, calendar="primary") -> "Event":
+        start = event["start"].get("dateTime") or event["start"].get("date")
+        end = event["end"].get("dateTime") or event["end"].get("date")
+        is_all_day = "date" in event["start"]
+        
         return Event(
             calendar=calendar,
-            start=event["start"].get("dateTime", event["start"].get("date")),
-            end=event["end"].get("dateTime", event["end"].get("date")),
+            start=start,
+            end=end,
             summary=event["summary"],
             event_id=event["id"],
+            is_all_day=is_all_day,
         )
 
     def to_fullcalendar(self):
-        return {
+        event_data = {
             "title": self.summary,
-            "start": self.start.isoformat(),
-            "end": self.end.isoformat(),
             "id": self.event_id,
             "extendedProps": {
                 "isOzycal": True,
@@ -47,6 +52,16 @@ class Event:
                 "summary": self.summary,
             },
         }
+        
+        if self.is_all_day:
+            event_data["allDay"] = True
+            event_data["start"] = self.start.date().isoformat()
+            event_data["end"] = self.end.date().isoformat()
+        else:
+            event_data["start"] = self.start.isoformat()
+            event_data["end"] = self.end.isoformat()
+        
+        return event_data
 
     def gcal_update(self, service):
         event = (
