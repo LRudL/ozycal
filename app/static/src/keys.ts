@@ -1,6 +1,7 @@
-import {moveSelectedTime, setSelectedTimeToBoundOf, changeSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet} from "./actions.ts"
+import {moveSelectedTime, setSelectedTimeToBoundOf, changeSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet, selectedCalendarSwitchFlow} from "./actions.ts"
 import { NoEventsFound } from "./state.ts";
 import { IKeyState, IKeybind, IState, IUI } from "./types.ts";
+import { MODAL_OPEN } from "./modal.ts";
 
 class Keybind implements IKeybind {
     keyseq: string[];
@@ -118,6 +119,7 @@ let keybinds = [
     }),
     new Keybind("a", (state, ui) => addEventAfterFlow(state, ui)),
     new Keybind("d", (state, ui) => deleteEventFlow(state, ui, state.selected.event)),
+    new Keybind("g", (state, ui) => selectedCalendarSwitchFlow(state, ui))
 ]
 
 export class KeyState implements IKeyState {
@@ -137,10 +139,14 @@ export class KeyState implements IKeyState {
     }
 
     handleKeyPress(event: KeyboardEvent) {
+        if (MODAL_OPEN) {
+            return;
+        }
         var key = event.key;
         this.seq.push(key);
         let valid_keybindings = this.getValid();
         if (valid_keybindings.length == 1) {
+            event.preventDefault()
             valid_keybindings[0].action(this.state, this.ui);
             this.seq = [];
         } else if (valid_keybindings.length == 0) {

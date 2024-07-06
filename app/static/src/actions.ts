@@ -1,6 +1,7 @@
 import {initializeSelectedTime, timeConvert} from "./utils.ts"
 import { IState, IUI, IEventObj } from "./types.ts";
 import { NoEventsFound } from "./state.ts";
+import { IModalResult } from "./modal.ts";
 
 function eventChangeWrapper(func: (state: IState, ui: IUI, event: IEventObj, ...args: any[]) => void) {
     return function (state: IState, ui: IUI, event: IEventObj | null, ...args: any[]) {
@@ -234,3 +235,10 @@ export function deleteEventFlow(state: IState, ui: IUI, event: IEventObj | null)
     }
 }
  
+export async function selectedCalendarSwitchFlow(state: IState, ui: IUI) {
+    let result: IModalResult | undefined = await ui.promptUserForSelectedCalendar();
+    if (result == undefined) {
+        return;
+    }
+    state.selected.calendar = result.calendarName;
+}

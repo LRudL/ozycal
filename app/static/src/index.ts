@@ -2,11 +2,12 @@ import { Calendar, EventContentArg, EventClickArg, EventChangeArg } from '@fullc
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { EventDragStopArg } from '@fullcalendar/interaction'; // Add this import
 
-
 import {State} from "./state.ts"
 import {UI} from "./ui.ts"
 import {KeyState} from "./keys.ts"
 import { ICalendar, IEventObj, IState, IUI } from "./types.ts";
+import { MODAL_OPEN } from './modal.ts';
+
 
 document.addEventListener('DOMContentLoaded', function() {
     function createCalendar(time: Date, state: IState) {
@@ -62,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ui.selectedModeUpdate.bind(ui),
                 ui.selectedTimeUpdate.bind(ui),
                 ui.selectedEventUpdate.bind(ui),
+                ui.selectedCalendarUpdate.bind(ui),
                 ui.editedEventsUpdate.bind(ui)
             );
             calendar.setOption("eventClick", function(info: EventClickArg) {
@@ -102,11 +104,12 @@ document.addEventListener('DOMContentLoaded', function() {
             (window as any).calendar = calendar;
 
             if (calendarColors) {
+                (window as any).calendarColors = calendarColors;
                 ui.setCalendarColors(calendarColors);
+                state.setCalendarNameOptions(Object.keys(calendarColors));
             }
             ui.updateStatusBar(keystate);
             isInitialLoad = false;
         })
         .catch(error => console.error('Error loading data:', error));
 });
-

@@ -1,8 +1,14 @@
+import { IModalResult } from "./modal";
+
 export interface IEventObj {
     start:  string;
     end:  string;
     title: string;
     id: string;
+    extendedProps?: {
+        isOzycal?: boolean;
+        calendar?: string;
+    };
 }
 
 
@@ -19,8 +25,10 @@ export interface IState {
     selected: {
         mode: string,
         time: Date,
-        event: null | IEventObj
+        event: null | IEventObj,
+        calendar: string,
     },
+    calendarNames: string[];
     editedEvents: {
         created: IEventObj[];
         deleted: IEventObj[];
@@ -58,6 +66,7 @@ export interface IUI {
 
     setCalendarColors(calendarColors: { [key: string]: string }): void;
     promptUser(promptText: string): string | null;
+    promptUserForSelectedCalendar(): Promise<IModalResult | undefined>;
     updateSelectedTimeLine(time: Date): void;
     enableSelectedTimeLine(): void;
     disableSelectedTimeLine(): void;

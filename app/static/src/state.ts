@@ -13,11 +13,14 @@ export class State implements IState {
         mode: string;
         time: Date;
         event: IEventObj | null;
+        calendar: string;
     };
+    calendarNames: string[];
     uiUpdateTriggers: {
         selectedModeUpdate: (mode: string) => void;
         selectedTimeUpdate: (time: Date) => void;
         selectedEventUpdate: (event: IEventObj | null) => void;
+        selectedCalendarUpdate: (calendar: string) => void;
         editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void;
     };
     events: IEventObj[];
@@ -33,12 +36,14 @@ export class State implements IState {
             selectedModeUpdate: () => {},
             selectedTimeUpdate: () => {},
             selectedEventUpdate: () => {},
+            selectedCalendarUpdate: () => {},
             editedEventsUpdate: () => {}
         };
         this.selected = createReactiveState({
             mode: 'time',
             time: initializeSelectedTime(time),
-            event: null
+            event: null,
+            calendar: "primary"
         }, (property, value) => {
             switch (property) {
                 case "mode":
@@ -50,8 +55,12 @@ export class State implements IState {
                 case "event":
                     this.uiUpdateTriggers.selectedEventUpdate(value as IEventObj | null);
                     break;
+                case "calendar":
+                    this.uiUpdateTriggers.selectedCalendarUpdate(value as string);
+                    break;
             }
         });
+        this.calendarNames = ["primary"];
 
         this.editedEvents = {
             created: createReactiveArray([], (newArray) => {
@@ -66,11 +75,19 @@ export class State implements IState {
         };
     }
 
-    connectUI(selectedModeUpdate: (mode: string) => void, selectedTimeUpdate: (time: Date) => void, selectedEventUpdate: (event: IEventObj | null) => void, editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void) {
+    connectUI(selectedModeUpdate: (mode: string) => void, selectedTimeUpdate: (time: Date) => void, selectedEventUpdate: (event: IEventObj | null) => void, selectedCalendarUpdate: (calendar: string) => void, editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void) {
         this.uiUpdateTriggers.selectedModeUpdate = selectedModeUpdate;
         this.uiUpdateTriggers.selectedTimeUpdate = selectedTimeUpdate;
         this.uiUpdateTriggers.selectedEventUpdate = selectedEventUpdate;
+        this.uiUpdateTriggers.selectedCalendarUpdate = selectedCalendarUpdate;
         this.uiUpdateTriggers.editedEventsUpdate = editedEventsUpdate;
+    }
+
+    setCalendarNameOptions(calendarNames: string[]) {
+        this.calendarNames = calendarNames;
+        if (!this.calendarNames.includes("primary")) {
+            this.calendarNames.unshift("primary");
+        }
     }
 
     getNextEvent(time: Date | string, on_fail="return_best", comparison = ">") {
@@ -270,14 +287,15 @@ export class State implements IState {
             id: id,
             start: start,
             end: end,
-            title: title
+            title: title,
+            extendedProps: {
+                isOzycal: true,
+                calendar: this.selected.calendar
+            }
         };
         this.events.push(newEvent);
         this.sortEvents();
         this.editedEvents.created.push(newEvent);
-        if (this.selected.mode == "edit") {
-            this.selected.event = newEvent;
-        }
         return newEvent;
     }
 

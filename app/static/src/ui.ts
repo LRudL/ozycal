@@ -1,4 +1,7 @@
+import {EventApi} from "@fullcalendar/core";
+
 import {ICalendar, IEventObj, IKeyState, IState, IUI} from "./types";
+import {IModalConfig, IModalResult, Modal} from "./modal";
 
 
 export class UI implements IUI {
@@ -13,19 +16,20 @@ export class UI implements IUI {
     }
 
     selectedTimeUpdate(time: Date) {
-        // console.log("selectedTimeUpdate", time);
         this.updateSelectedTimeLine(time);
         this.updateStatusBarSelected();
     }
 
     selectedEventUpdate(event: IEventObj | null) {
-        // console.log("selectedEventUpdate", event);
         this.updateSelectedEvent(event);
         this.updateStatusBarSelected();
     }
 
+    selectedCalendarUpdate(calendar: string) {
+        this.updateStatusBarCalendar();
+    }
+
     selectedModeUpdate(mode: string) {
-        // console.log("selectedModeUpdate", mode);
         this.updateStatusBarMode();
         if (mode == "time") {
             this.enableSelectedTimeLine();
@@ -41,19 +45,23 @@ export class UI implements IUI {
         this.updateStatusBarEdits();
     }
 
+    colorEvent(event: EventApi) {
+        if (event.extendedProps.isOzycal) {
+            if (event.extendedProps.calendar && this.customCalendarColors[event.extendedProps.calendar]) {
+                event.setProp('backgroundColor', this.customCalendarColors[event.extendedProps.calendar]);
+            } else {
+                event.setProp('backgroundColor', "#0000ff");
+            }
+        }
+    }
+
     setCalendarColors(calendarColors: { [key: string]: string }) {
         // merge with existing calendar colors
         this.customCalendarColors = { ...this.customCalendarColors, ...calendarColors };
         if (this.state && this.interface) {
             let fullCalendarEvents = this.interface.getEvents();
-            fullCalendarEvents.forEach(event => {
-                if (event.extendedProps.isOzycal) {
-                    if (event.extendedProps.calendar && this.customCalendarColors[event.extendedProps.calendar]) {
-                        event.setProp('backgroundColor', this.customCalendarColors[event.extendedProps.calendar]);
-                    } else {
-                        event.setProp('backgroundColor', "#0000ff");
-                    }
-                }
+            fullCalendarEvents.forEach((event: EventApi) => {
+                this.colorEvent(event);
             });
         }
         console.assert(this.interface, "ui.interface is not initialized");
@@ -62,6 +70,11 @@ export class UI implements IUI {
 
     promptUser(promptText: string) {
         return prompt(promptText);
+    }
+
+    showModal(modalConfig: IModalConfig) {
+        let modal = new Modal(modalConfig);
+        return modal.show();
     }
 
     updateSelectedTimeLine(time: Date) {
@@ -112,8 +125,33 @@ export class UI implements IUI {
         return eventName;
     }
 
-    addEvent(newEvent: any) {
-        this.interface?.addEvent(newEvent);
+    promptUserForSelectedCalendar(): Promise<IModalResult | undefined> {
+        let modalOptions = this.state.calendarNames.map(calendarName => ({
+            bigText: calendarName,
+            smallText: "",
+            value: calendarName
+        }));
+        let modalResult = this.showModal({
+            modalOptionSet: [{
+                titleText: "Calendar",
+                helpText: "Select a calendar to switch to",
+                value: "calendarName",
+                allowFreeText: false,
+                options: modalOptions
+            }]
+        });
+        return modalResult;
+    }
+
+    addEvent(newEvent: IEventObj) {
+        if (!newEvent.extendedProps) {
+            newEvent.extendedProps = {};
+        }
+        newEvent.extendedProps.isOzycal = true;
+        let interfaceEventObj: EventApi | void = this.interface?.addEvent(newEvent);
+        // if interfaceEventObj is void, return
+        if (interfaceEventObj === undefined) return;
+        this.colorEvent(interfaceEventObj);
     }
 
     updateStatusBarMode() {
@@ -152,6 +190,13 @@ export class UI implements IUI {
         }
     }
 
+    updateStatusBarCalendar() {
+        let calendarcol = document.getElementById("calendarcol");
+        if (calendarcol) {
+            calendarcol.innerText = "Calendar: " + this.state.selected.calendar;
+        }
+    }
+
     updateStatusBar(keystate: IKeyState | null = null) {
         this.updateStatusBarMode();
         if (keystate !== null) {
@@ -159,5 +204,6 @@ export class UI implements IUI {
         }
         this.updateStatusBarSelected();
         this.updateStatusBarEdits();
+        this.updateStatusBarCalendar();
     }
 }
