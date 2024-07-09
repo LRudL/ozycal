@@ -1,3 +1,4 @@
+import moment from "moment";
 
 export function initializeSelectedTime(now: Date, round_direction="forward") {
     if (now == undefined) now = new Date();
@@ -17,6 +18,15 @@ export function timeConvert(time: Date | string) {
         return time;
     }
     return new Date(time);
+}
+
+export function dateToWeekID(date: Date | string) {
+  date = timeConvert(date);
+  return moment(date).format("YYYY.W");
+}
+
+export function weekIDToDate(weekID: string) {
+  return moment(weekID, "YYYY.W").toDate();
 }
 
 type ReactiveUpdateFunctionType<T> = (property: keyof T, value: T[keyof T]) => void;
@@ -58,4 +68,20 @@ export function createReactiveArray<T>(
       return value;
     }
   });
+}
+
+export class DefaultMap<K, T> extends Map<K, T> {
+  private defaultFactory: () => T;
+
+  constructor(defaultFactory: () => T) {
+    super();
+    this.defaultFactory = defaultFactory;
+  }
+
+  get(key: K) {
+    if (!this.has(key)) {
+      this.set(key, this.defaultFactory());
+    }
+    return super.get(key);
+  }
 }

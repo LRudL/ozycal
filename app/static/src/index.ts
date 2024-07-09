@@ -1,13 +1,13 @@
 import { Calendar, EventContentArg, EventClickArg, EventChangeArg } from '@fullcalendar/core';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin, { EventDragStopArg } from '@fullcalendar/interaction'; // Add this import
+import interactionPlugin, { EventDragStopArg } from '@fullcalendar/interaction';
 
-import {State} from "./state.ts"
-import {UI} from "./ui.ts"
-import {KeyState} from "./keys.ts"
-import { ICalendar, IEventObj, IState, IUI } from "./types.ts";
-import { MODAL_OPEN } from './modal.ts';
-
+import { State } from "./state.ts"
+import { UI } from "./ui.ts"
+import { KeyState } from "./keys.ts"
+import { IEventObj, IState } from "./types.ts";
+import { fetchWeeklyEvents, fetchColors } from "./backendService.ts";
+import { importEvents } from './actions.ts';
 
 document.addEventListener('DOMContentLoaded', function() {
     function createCalendar(time: Date, state: IState) {
@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         let calendar = new Calendar(calendarEl, {
             initialView: 'timeGridWeek',
+            weekNumbers: true,
             plugins: [timeGridPlugin, interactionPlugin],
             firstDay: 1,
             // eventClick: null, // this is set below
@@ -45,26 +46,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const eventsPromise = fetch(`/api/weekly_events?timezone=${encodeURIComponent(userTimezone)}`)
-        .then(response => response.json());
-
-    const colorsPromise = fetch(`/api/calendar_colors`)
-        .then(response => response.json())
-        .catch(error => console.error('Error loading calendar colors:', error));
+    const eventsPromise = fetchWeeklyEvents(userTimezone);
+    const colorsPromise = fetchColors();
 
     Promise.all([eventsPromise, colorsPromise])
         .then(([eventsReceived, calendarColors]) => {
             let isInitialLoad = true;
             let state = new State(new Date());
-            state.importEvents(eventsReceived);
             let calendar = createCalendar(state.selected.time, state);
-            let ui = new UI(calendar, state);
+            let ui = new UI(calendar, state, userTimezone);
+            importEvents(state, ui, eventsReceived);
             state.connectUI(
                 ui.selectedModeUpdate.bind(ui),
                 ui.selectedTimeUpdate.bind(ui),
                 ui.selectedEventUpdate.bind(ui),
                 ui.selectedCalendarUpdate.bind(ui),
-                ui.editedEventsUpdate.bind(ui)
+                ui.editedEventsUpdate.bind(ui),
+                ui.selectedWeekUpdate.bind(ui)
             );
             calendar.setOption("eventClick", function(info: EventClickArg) {
                 state.selected.event = state.getEventFromId(info.event.id);

@@ -1,18 +1,21 @@
-import {EventApi} from "@fullcalendar/core";
+import { EventApi } from "@fullcalendar/core";
 
-import {ICalendar, IEventObj, IKeyState, IState, IUI} from "./types";
-import {IModalConfig, IModalResult, Modal} from "./modal";
+import { ICalendar, IEventObj, IKeyState, IState, IUI } from "./types";
+import { IModalConfig, IModalResult, Modal } from "./modal";
+import { weekIDToDate } from "./utils";
 
 
 export class UI implements IUI {
     interface: ICalendar;
     state: IState;
     customCalendarColors: { [key: string]: string };
+    userTimezone: string;
 
-    constructor(calendarInterface: ICalendar, state: IState) {
+    constructor(calendarInterface: ICalendar, state: IState, userTimezone: string) {
         this.interface = calendarInterface;
         this.state = state;
         this.customCalendarColors = {};
+        this.userTimezone = userTimezone;
     }
 
     selectedTimeUpdate(time: Date) {
@@ -27,6 +30,11 @@ export class UI implements IUI {
 
     selectedCalendarUpdate(calendar: string) {
         this.updateStatusBarCalendar();
+    }
+
+    selectedWeekUpdate(week: string) {
+        let date = weekIDToDate(week);
+        this.interface.gotoDate(date);
     }
 
     selectedModeUpdate(mode: string) {

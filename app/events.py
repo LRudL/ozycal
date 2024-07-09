@@ -4,7 +4,6 @@ import datetime
 with open("calendar_ids.json", "r") as file:
     CALENDAR_IDS = json.load(file)
 
-
 class Event:
     def __init__(
         self,
@@ -33,6 +32,9 @@ class Event:
         end = event["end"].get("dateTime") or event["end"].get("date")
         is_all_day = "date" in event["start"]
         
+        if "summary" not in event:
+            event["summary"] = "[Google Calendar event with no title]"
+        
         return Event(
             calendar=calendar,
             start=start,
@@ -55,8 +57,8 @@ class Event:
         
         if self.is_all_day:
             event_data["allDay"] = True
-            event_data["start"] = self.start.date().isoformat()
-            event_data["end"] = self.end.date().isoformat()
+            event_data["start"] = self.start.isoformat()
+            event_data["end"] = self.end.isoformat()
         else:
             event_data["start"] = self.start.isoformat()
             event_data["end"] = self.end.isoformat()

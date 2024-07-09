@@ -1,4 +1,6 @@
+import { EventApi } from "@fullcalendar/core";
 import { IModalResult } from "./modal";
+import { DefaultMap } from "./utils";
 
 export interface IEventObj {
     start:  string;
@@ -18,6 +20,14 @@ export interface ICalendar {
     addEvent: (event: any) => void;
     render: () => void;
     addEventSource: (source: IEventObj[]) => void;
+    removeAllEventSources: () => void;
+    gotoDate: (date: Date | string) => void;
+}
+
+export interface IStateEditedEvents {
+    created: IEventObj[];
+    deleted: IEventObj[];
+    modified: IEventObj[];
 }
 
 export interface IState {
@@ -27,18 +37,17 @@ export interface IState {
         time: Date,
         event: null | IEventObj,
         calendar: string,
+        week: string,
     },
+    loadedWeeks: DefaultMap<string, boolean>,
     calendarNames: string[];
-    editedEvents: {
-        created: IEventObj[];
-        deleted: IEventObj[];
-        modified: IEventObj[];
-    };
+    editedEvents: IStateEditedEvents;
     uiUpdateTriggers: {
         selectedModeUpdate: (mode: string) => void;
         selectedTimeUpdate: (time: Date) => void;
         selectedEventUpdate: (event: IEventObj | null) => void;
         editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void;
+        selectedWeekUpdate: (week: string) => void;
     };
     importEvents: (events: IEventObj[]) => void;
     getNextEvent: (time: Date | string, on_fail?: string, comparison?: string) => IEventObj | null;
@@ -62,8 +71,10 @@ export interface IState {
 export interface IUI {
     interface: ICalendar;
     state: IState;
+    userTimezone: string;
     customCalendarColors: { [key: string]: string };
 
+    colorEvent(event: EventApi): void;
     setCalendarColors(calendarColors: { [key: string]: string }): void;
     promptUser(promptText: string): string | null;
     promptUserForSelectedCalendar(): Promise<IModalResult | undefined>;
@@ -97,4 +108,10 @@ export interface IKeyState {
     state: IState;
     handleKeyPress(key: KeyboardEvent): void;
     parseSeq(seq: string): IKeySeqParse;
+}
+
+export interface SyncResult {
+    created: {old_id: string, new_id: string}[];
+    deleted: string[];
+    modified: string[];
 }

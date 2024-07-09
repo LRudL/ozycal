@@ -1,4 +1,4 @@
-import {moveSelectedTime, setSelectedTimeToBoundOf, changeSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet, selectedCalendarSwitchFlow, jumpToTimeFromNum, eventSyncFlow} from "./actions.ts"
+import {moveSelectedTime, setSelectedTimeToBoundOf, changeSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet, selectedCalendarSwitchFlow, jumpToTimeFromNum, eventSyncFlow, moveWeek} from "./actions.ts"
 import { NoEventsFound } from "./state.ts";
 import { IKeySeqParse, IKeyState, IKeybind, IState, IUI } from "./types.ts";
 import { MODAL_OPEN } from "./modal.ts";
@@ -100,6 +100,8 @@ let keybinds = [
             setSelectedEventFromTimeSet(state, ui, undefined, 23, 59, "before")
         }
     }),
+    new Keybind("n", (state, ui, num=1) => moveWeek(state, ui, num)),
+    new Keybind("p", (state, ui, num=1) => moveWeek(state, ui, -1 * num)),
     new Keybind("t", (state, ui) => {
         try {
             toggleBetweenTimeAndEventMode(state, ui)
@@ -121,7 +123,7 @@ let keybinds = [
     new Keybind("d", (state, ui, num=1) => deleteEventFlow(state, ui, state.selected.event)),
     new Keybind("g", (state, ui, num=9) => jumpToTimeFromNum(state, ui, num)),
     new Keybind("s", (state, ui, quick_switch_idx=-1) => selectedCalendarSwitchFlow(state, ui, quick_switch_idx)),
-    new Keybind("S", (state, ui, num=1) => eventSyncFlow(state, ui))
+    new Keybind("S", (state, ui, num=1) => eventSyncFlow(state, ui)),
 ]
 
 export class KeyState implements IKeyState {

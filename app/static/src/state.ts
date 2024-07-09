@@ -1,5 +1,6 @@
-import {createReactiveArray, createReactiveState, initializeSelectedTime, timeConvert} from "./utils.ts"
+import {createReactiveArray, createReactiveState, dateToWeekID, initializeSelectedTime, timeConvert} from "./utils.ts"
 import {IState, IEventObj} from "./types.ts"
+import { DefaultMap } from "./utils";
 
 export class NoEventsFound extends Error {
     constructor(message = "No events found") {
@@ -14,7 +15,9 @@ export class State implements IState {
         time: Date;
         event: IEventObj | null;
         calendar: string;
+        week: string;
     };
+    loadedWeeks: DefaultMap<string, boolean>;
     calendarNames: string[];
     uiUpdateTriggers: {
         selectedModeUpdate: (mode: string) => void;
@@ -22,6 +25,7 @@ export class State implements IState {
         selectedEventUpdate: (event: IEventObj | null) => void;
         selectedCalendarUpdate: (calendar: string) => void;
         editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void;
+        selectedWeekUpdate: (week: string) => void;
     };
     events: IEventObj[];
     editedEvents: {
@@ -37,13 +41,15 @@ export class State implements IState {
             selectedTimeUpdate: () => {},
             selectedEventUpdate: () => {},
             selectedCalendarUpdate: () => {},
-            editedEventsUpdate: () => {}
+            editedEventsUpdate: () => {},
+            selectedWeekUpdate: () => {}
         };
         this.selected = createReactiveState({
             mode: 'time',
             time: initializeSelectedTime(time),
             event: null,
-            calendar: "primary"
+            calendar: "primary",
+            week: dateToWeekID(initializeSelectedTime(time))
         }, (property, value) => {
             switch (property) {
                 case "mode":
@@ -58,8 +64,12 @@ export class State implements IState {
                 case "calendar":
                     this.uiUpdateTriggers.selectedCalendarUpdate(value as string);
                     break;
+                case "week":
+                    this.uiUpdateTriggers.selectedWeekUpdate(value as string);
+                    break;
             }
         });
+        this.loadedWeeks = new DefaultMap(() => false);
         this.calendarNames = ["primary"];
 
         this.editedEvents = {
@@ -75,12 +85,13 @@ export class State implements IState {
         };
     }
 
-    connectUI(selectedModeUpdate: (mode: string) => void, selectedTimeUpdate: (time: Date) => void, selectedEventUpdate: (event: IEventObj | null) => void, selectedCalendarUpdate: (calendar: string) => void, editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void) {
+    connectUI(selectedModeUpdate: (mode: string) => void, selectedTimeUpdate: (time: Date) => void, selectedEventUpdate: (event: IEventObj | null) => void, selectedCalendarUpdate: (calendar: string) => void, editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void, selectedWeekUpdate: (week: string) => void) {
         this.uiUpdateTriggers.selectedModeUpdate = selectedModeUpdate;
         this.uiUpdateTriggers.selectedTimeUpdate = selectedTimeUpdate;
         this.uiUpdateTriggers.selectedEventUpdate = selectedEventUpdate;
         this.uiUpdateTriggers.selectedCalendarUpdate = selectedCalendarUpdate;
         this.uiUpdateTriggers.editedEventsUpdate = editedEventsUpdate;
+        this.uiUpdateTriggers.selectedWeekUpdate = selectedWeekUpdate;
     }
 
     setCalendarNameOptions(calendarNames: string[]) {
@@ -269,8 +280,18 @@ export class State implements IState {
     }
 
     importEvents(events: IEventObj[]) {
-        this.events = this.events.concat(events);
+        for (let event of events) {
+            if (this.getEventFromId(event.id) == null) {
+                this.events.push(event);
+            } else {
+                console.log("Warning: importing event with id " + event.id + " that already exists");
+            }
+        }
         this.sortEvents();
+        let weeks = new Set(events.map(e => dateToWeekID(e.start)));
+        for (let week of weeks) {
+            this.loadedWeeks.set(week, true);
+        }
     }
     addEvent(start: Date | string, end: Date | string, title: string, id?: string) {
         if (id == undefined) {

@@ -1,7 +1,8 @@
-import {initializeSelectedTime, timeConvert} from "./utils.ts"
+import {dateToWeekID, initializeSelectedTime, timeConvert} from "./utils.ts"
 import { IState, IUI, IEventObj } from "./types.ts";
 import { NoEventsFound } from "./state.ts";
 import { IModalResult } from "./modal.ts";
+import { fetchWeeklyEvents, syncEditedEvents } from "./backendService.ts";
 
 function eventChangeWrapper(func: (state: IState, ui: IUI, event: IEventObj, ...args: any[]) => void) {
     return function (state: IState, ui: IUI, event: IEventObj | null, ...args: any[]) {
@@ -28,6 +29,30 @@ export let moveSelectedTime = timeChangeWrapper(function(state: IState, ui: IUI,
     time.setMinutes(time.getMinutes() + minutes);
     state.selected.time = time;
 });
+
+export function moveWeek(state: IState, ui: IUI, weeks=1) {
+    function changeWeek(time: Date) {
+        state.selected.week = dateToWeekID(time);
+        if (state.selected.mode == "time") {
+            timeChangeWrapper(() => {
+                state.selected.time = time;
+            })(state, ui);
+        } else if (state.selected.mode == "event") {
+            setSelectedEventFromTime(state, ui, state.selected.event, time, "start");
+        }
+    }
+    var time = new Date(state.selected.time);
+    time.setDate(time.getDate() + weeks * 7);
+    if (state.loadedWeeks.get(dateToWeekID(time)) == false) {
+        fetchWeeklyEvents(ui.userTimezone, time).then((eventsReceived) => {
+            importEvents(state, ui, eventsReceived);
+            state.loadedWeeks.set(dateToWeekID(time), true);
+            changeWeek(time);
+        });
+    } else {
+        changeWeek(time);
+    }
+}
 
 export let setSelectedTimeToBoundOf = timeChangeWrapper(function(state: IState, ui: IUI, bound="start", time="day") {
     console.assert(bound == "start" || bound == "end", "bound must be start or end");
@@ -77,7 +102,6 @@ export let gotoCurrentContiguousBlockEndEvent = eventChangeWrapper(function(stat
     var contiguousEvents = state.getContiguousEvents(event);
     if (contiguousEvents[contiguousEvents.length - 1].id == event.id) {
         var nextNoncontiguous = state.getNextNoncontiguousEvent(event);
-        console.log(nextNoncontiguous)
         state.selected.event = state.getContiguousEvents(nextNoncontiguous)[0];
     } else {
         state.selected.event = contiguousEvents[contiguousEvents.length - 1];
@@ -269,23 +293,17 @@ export let jumpToTimeFromNum = timeChangeWrapper(function(state: IState, ui: IUI
     }
 });
 
-interface SyncResult {
-    created: {old_id: string, new_id: string}[];
-    deleted: string[];
-    modified: string[];
-}
-
 export let eventSyncFlow = async function(state: IState, ui: IUI) {
-    const response = await fetch('/api/update_events', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(state.editedEvents),
-    });
+    // const response = await fetch('/api/update_events', {
+    //     method: 'POST',
+    //     headers: {
+    //         'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify(state.editedEvents),
+    // });
 
-    const result = await response.json() as SyncResult;
-    console.log("SYNC RESULT", result);
+    // const result = await response.json() as SyncResult;
+    const result = await syncEditedEvents(state.editedEvents);
     
     for (let idMapping of result["created"]) {
         let old_id = idMapping["old_id"];
@@ -309,7 +327,7 @@ export let eventSyncFlow = async function(state: IState, ui: IUI) {
 
     if (state.editedEvents.deleted.length > 0) {
         alert("Sync anomaly: the following events were supposed to be deleted but were not present in the response from the server: " + state.editedEvents.deleted.map(e => e.title).join(", "));
-    }
+    } 
 
     for (let id of result["modified"]) {
         state.editedEvents.modified = state.editedEvents.modified.filter(e => e.id != id);
@@ -325,4 +343,11 @@ export let eventSyncFlow = async function(state: IState, ui: IUI) {
     } else{
         ui.updateStatusBarEdits(true);
     }
+}
+
+export function importEvents(state: IState, ui: IUI, events: IEventObj[]) {
+    let newEvents = events.filter(e => state.getEventFromId(e.id) == null);
+    state.importEvents(newEvents);
+    ui.interface.addEventSource(newEvents);
+    newEvents.map(e => ui.interface.getEventById(e.id)).map(ui.colorEvent.bind(ui));
 }

@@ -31,6 +31,8 @@ def init_routes(app):
     def weekly_events():
         service = get_service()
         timezone_str = request.args.get("timezone")
+        time_str = request.args.get("time")
+        time = datetime.datetime.fromisoformat(time_str) if time_str else None
         if timezone_str:
             try:
                 timezone = pytz.timezone(timezone_str)
@@ -42,7 +44,7 @@ def init_routes(app):
 
         try:
             # get current time, and adjust to start of the week (Monday) and end of the week (Sunday)
-            start, end = week_start_end(timezone=timezone, isoformat=True)
+            start, end = week_start_end(time=time, timezone=timezone, isoformat=True)
             events = get_events(service, start, end)
             return jsonify([event.to_fullcalendar() for event in events])
         except Exception as e:
