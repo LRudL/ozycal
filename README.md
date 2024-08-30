@@ -22,3 +22,13 @@ It works on my machine, not on yours.
 \- Percy Shelley, "Ozymandias"
 
 With the productive power of ozycal, you too can become a king of kings who first achieves great things and then inevitably becomes a symbol of the transcience of all achievement.
+
+## Fact sheet
+
+| Aspect | Description |
+|--------|-------------|
+| Client language | Typescript |
+| Server language | Python |
+| Coding style | spaghetti |
+| Coding substyle | rigatoni |
+| Bugginess level | Amazon rainforest |

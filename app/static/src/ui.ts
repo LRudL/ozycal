@@ -1,8 +1,10 @@
 import { EventApi } from "@fullcalendar/core";
 
-import { ICalendar, IEventObj, IKeyState, IState, IUI } from "./types";
+import { ICalendar, IDatalinkSpec, IEventObj, IKeyState, IState, IUI } from "./types";
 import { IModalConfig, IModalResult, Modal } from "./modal";
-import { weekIDToDate } from "./utils";
+import { getContrastYIQ, timeConvert, weekIDToDate } from "./utils";
+
+const DEFAULT_CALENDAR_COLOR = "#E5E5E5";
 
 
 export class UI implements IUI {
@@ -10,12 +12,16 @@ export class UI implements IUI {
     state: IState;
     customCalendarColors: { [key: string]: string };
     userTimezone: string;
+    datalinkSpecs: IDatalinkSpec[];
+    eventCustomClasses: Map<string, string[]>;
 
     constructor(calendarInterface: ICalendar, state: IState, userTimezone: string) {
         this.interface = calendarInterface;
         this.state = state;
         this.customCalendarColors = {};
         this.userTimezone = userTimezone;
+        this.datalinkSpecs = [];
+        this.eventCustomClasses = new Map();
     }
 
     selectedTimeUpdate(time: Date) {
@@ -53,14 +59,99 @@ export class UI implements IUI {
         this.updateStatusBarEdits();
     }
 
-    colorEvent(event: EventApi) {
-        if (event.extendedProps.isOzycal) {
+    getFullcalendarEventById(id: string) {
+        return this.interface.getEvents().find(event => event._def.publicId === id);
+    }
+
+    timeVisible(time: Date | string) {
+        time = timeConvert(time);
+        let start = this.interface.view.activeStart;
+        let end = this.interface.view.activeEnd;
+        return time >= start && time <= end;
+    }
+
+    renderAllEvents() {
+        for (let event of this.state.events) {
+            if (this.timeVisible(event.start) || this.timeVisible(event.end)) {
+                this.renderEvent(event.id, true);
+            }
+        }
+        this.interface.render();
+    }
+
+    renderEvent(eventOrId: string | EventApi, skipInterfaceRender: boolean = false) {
+        let event: EventApi;
+        let id: string;
+        if (typeof eventOrId === 'string') {
+            id = eventOrId;
+            event = this.getFullcalendarEventById(eventOrId);
+            if (!event) {
+                console.error("Event not found: " + eventOrId);
+                return;
+            }
+        } else {
+            // @ts-ignore
+            id = eventOrId._def.publicId;
+            event = eventOrId;
+        }
+        this.colorEventByCalendar(event);
+        this.styleEventByBackgroundLightness(event);
+        let customClasses = this.styleEventByDatalinks(id, event);
+        customClasses = customClasses.concat(this.styleEventBySyncStatus(id, event));
+        this.eventCustomClasses.set(id, customClasses);
+        if (!skipInterfaceRender) {
+            this.interface.render();
+        }
+    }
+
+    colorEventByCalendar(event: EventApi) {
+        // This function does not use the custom class -setting based method, because for some reason fullcalenadr allows setting backgroundColor directly but not other style properties; also would be annoying to make classes for all the different colors
+        if (event.extendedProps?.isOzycal) {
             if (event.extendedProps.calendar && this.customCalendarColors[event.extendedProps.calendar]) {
                 event.setProp('backgroundColor', this.customCalendarColors[event.extendedProps.calendar]);
             } else {
-                event.setProp('backgroundColor', "#0000ff");
+                event.setProp('backgroundColor', DEFAULT_CALENDAR_COLOR);
             }
         }
+    }
+
+    styleEventByBackgroundLightness(event: EventApi) {
+        var backgroundColor = event.backgroundColor 
+        if (backgroundColor == null) {
+            return;
+        }
+        var textColor = getContrastYIQ(backgroundColor);
+        event.setProp('textColor', textColor);
+    }
+ 
+
+    styleEventBySyncStatus(eventId: string, event: EventApi) {
+        const eventSynced = !(this.state.editedEvents.created.map(event => event.id).includes(eventId) || this.state.editedEvents.modified.map(event => event.id).includes(eventId) || this.state.editedEvents.deleted.map(event => event.id).includes(eventId));
+        if (!eventSynced) {
+            return ['event-unsynced'];
+        }
+        return [];
+    }
+
+    styleEventByDatalinks(eventId: string, event: EventApi) {
+        const datalinkExists = Array.from(this.state.datalinks.eventDatalinks.keys()).includes(eventId);
+        const datalinkUnsynced = this.state.datalinks.eventsWithNewDatalinks.has(eventId);
+        
+        let customClasses: string[] = [];
+        
+        if (datalinkExists) {
+            if (datalinkUnsynced) {
+                customClasses.push('datalink-unsynced');
+            } else {
+                customClasses.push('datalink-synced');
+            }
+        } else {
+            if (this.state.datalinks.getApplicableDatalinks(event.extendedProps.calendar).length > 0) {
+                customClasses.push('datalink-unset');
+            }
+        }
+        
+        return customClasses;
     }
 
     setCalendarColors(calendarColors: { [key: string]: string }) {
@@ -69,11 +160,15 @@ export class UI implements IUI {
         if (this.state && this.interface) {
             let fullCalendarEvents = this.interface.getEvents();
             fullCalendarEvents.forEach((event: EventApi) => {
-                this.colorEvent(event);
+                this.renderEvent(event);
             });
         }
         console.assert(this.interface, "ui.interface is not initialized");
         this.interface.render();
+    }
+
+    setDatalinks(datalinkSpecs: IDatalinkSpec[]): void {
+        this.datalinkSpecs = datalinkSpecs;
     }
 
     promptUser(promptText: string) {
@@ -159,7 +254,7 @@ export class UI implements IUI {
         let interfaceEventObj: EventApi | void = this.interface?.addEvent(newEvent);
         // if interfaceEventObj is void, return
         if (interfaceEventObj === undefined) return;
-        this.colorEvent(interfaceEventObj);
+        this.renderEvent(interfaceEventObj);
     }
 
     updateStatusBarMode() {
@@ -194,7 +289,20 @@ export class UI implements IUI {
     updateStatusBarEdits(flash=false) {
         let editscol = document.getElementById("editscol");
         if (editscol) {
-            editscol.innerText = "Unsynced changes: " + this.state.editedEvents.created.length + "C | " + this.state.editedEvents.modified.length + "M | " + this.state.editedEvents.deleted.length + "D";
+            let unsyncedChanges = [];
+            if (this.state.editedEvents.created.length > 0) {
+                unsyncedChanges.push(this.state.editedEvents.created.length + "C");
+            }
+            if (this.state.editedEvents.modified.length > 0) {
+                unsyncedChanges.push(this.state.editedEvents.modified.length + "M");
+            }
+            if (this.state.editedEvents.deleted.length > 0) {
+                unsyncedChanges.push(this.state.editedEvents.deleted.length + "D");
+            }
+            if (this.state.datalinks.eventsWithNewDatalinks.size > 0) {
+                unsyncedChanges.push(this.state.datalinks.eventsWithNewDatalinks.size + " Datalinks");
+            }
+            editscol.innerText = unsyncedChanges.length > 0 ? "Unsynced changes: " + unsyncedChanges.join(" | ") : "No unsynced changes";
         }
         if (flash && editscol) {
             editscol.style.backgroundColor = "green";

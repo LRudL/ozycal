@@ -26,7 +26,8 @@ export function dateToWeekID(date: Date | string) {
 }
 
 export function weekIDToDate(weekID: string) {
-  return moment(weekID, "YYYY.W").toDate();
+  // This function returns the date of the Monday (start) of the specified week
+  return moment(weekID, "YYYY.W").startOf('isoWeek').toDate();
 }
 
 type ReactiveUpdateFunctionType<T> = (property: keyof T, value: T[keyof T]) => void;
@@ -84,4 +85,13 @@ export class DefaultMap<K, T> extends Map<K, T> {
     }
     return super.get(key);
   }
+}
+
+export function getContrastYIQ(hexcolor: string) {
+    hexcolor = hexcolor.replace("#", "");
+    var r = parseInt(hexcolor.slice(0, 2), 16);
+    var g = parseInt(hexcolor.slice(2, 4), 16);
+    var b = parseInt(hexcolor.slice(4, 6), 16);
+    var yiq = ((r*299)+(g*587)+(b*114))/1000;
+    return (yiq >= 128) ? 'black' : 'white';
 }

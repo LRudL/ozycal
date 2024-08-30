@@ -1,4 +1,4 @@
-import {moveSelectedTime, setSelectedTimeToBoundOf, changeSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet, selectedCalendarSwitchFlow, jumpToTimeFromNum, eventSyncFlow, moveWeek} from "./actions.ts"
+import {moveSelectedTime, setSelectedTimeToBoundOf, changeSelectedEvent, setSelectedEventFromTime, setSelectedEventFromTimeDelta, addEventFlow, deleteEventFlow, toggleBetweenTimeAndEventMode, addEventAfterFlow, gotoNextContiguousBlockStartEvent, gotoCurrentContiguousBlockStartEvent, gotoCurrentContiguousBlockEndEvent, gotoNextContiguousBlockBound, gotoPreviousContiguousBlockBound, setSelectedEventFromTimeSet, selectedCalendarSwitchFlow, jumpToTimeFromNum, eventSyncFlow, moveWeek, markEventFlow} from "./actions.ts"
 import { NoEventsFound } from "./state.ts";
 import { IKeySeqParse, IKeyState, IKeybind, IState, IUI } from "./types.ts";
 import { MODAL_OPEN } from "./modal.ts";
@@ -124,6 +124,7 @@ let keybinds = [
     new Keybind("g", (state, ui, num=9) => jumpToTimeFromNum(state, ui, num)),
     new Keybind("s", (state, ui, quick_switch_idx=-1) => selectedCalendarSwitchFlow(state, ui, quick_switch_idx)),
     new Keybind("S", (state, ui, num=1) => eventSyncFlow(state, ui)),
+    new Keybind("m", (state, ui, num=1) => markEventFlow(state, ui, state.selected.event))
 ]
 
 export class KeyState implements IKeyState {

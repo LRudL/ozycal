@@ -2,12 +2,27 @@ body {
     font-family: sans-serif;
 }
 
-.fc-event {
-    border-radius: 0px;
+:root {
+  --fc-event-border-color: black;
 }
 
+.fc-event {
+    border-radius: 0px;
+    overflow: hidden;
+}
+
+.fc-day-today {
+  background-color: #fff !important;
+}
+
+.current-day-header {
+    background-color: #000 !important;
+    color: #fff !important;
+}
+
+
 .fc-event-selected {
-  border: 3px solid #000;
+  border: 3px solid #000 !important;
 }
 
 .fc-time-marker {
@@ -77,4 +92,33 @@ body {
     font-size: 12px;
     color: #777;
     margin-top: 10px;
+}
+
+.datalink-unset {
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255,255,255,0.25) 10px,
+        rgba(255,255,255,0.25) 20px
+    );
+}
+
+.datalink-unsynced {
+    border-style: dotted solid dotted solid !important;
+    border-color: white !important;
+    border-width: 4px 0 4px 0 !important;
+}
+
+.datalink-synced {
+    border-style: solid;
+    border-color: black;
+    border-width: 3px;
+}
+
+
+.event-unsynced {
+    border-style: dotted;
+    border-color: white;
+    border-width: 4px;
 }

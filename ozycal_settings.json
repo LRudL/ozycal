@@ -1,0 +1,129 @@
+{
+    "calendar_ids": {
+        "primary": "primary",
+        "exercise": "s6u1ocm54f1je57frd50moo1bs@group.calendar.google.com",
+        "meetings": "3f5thgpglsv83ek3s0dch7qj9k@group.calendar.google.com",
+        "work": "4b6nnjgbovn5h3gho913skn4tg@group.calendar.google.com",
+        "workb": "tphf0c95d3al3vu3ba6ojlt15k@group.calendar.google.com"
+    },
+    "datapath": "/home/lrudl/Dropbox/Rudolf/Life/ozycal",
+    "event_datalinks": [
+        {
+            "name": "wlog",
+            "eventTitleSourceProperty": "task",
+            "calendars": ["work", "workb", "meetings"],
+            "properties": {
+                "task": {
+                    "options": "{{datapath}}/wtasks.csv",
+                    "freeform": false
+                },
+                "type": {
+                    "options": "{{datapath}}/wtypes.csv",
+                    "freeform": false
+                },
+                "focus": {
+                    "options": [
+                        {
+                            "bigText": "0.5",
+                            "smallText": "zen-like focus",
+                            "value": 0.5
+                        },
+                        {
+                            "bigText": "1",
+                            "smallText": "high focus",
+                            "value": 1
+                        },
+                        {
+                            "bigText": "2",
+                            "smallText": "normal focus",
+                            "value": 2
+                        },
+                        {
+                            "bigText": "3",
+                            "smallText": "low focus",
+                            "value": 3
+                        }
+                    ],
+                    "freeform": false
+                },
+                "social": {
+                    "options": [
+                        {
+                            "bigText": "0",
+                            "smallText": "entirely alone",
+                            "value": 0
+                        },
+                        {
+                            "bigText": "1",
+                            "smallText": "other people around",
+                            "value": 1
+                        },
+                        {
+                            "bigText": "2",
+                            "smallText": "social",
+                            "value": 2
+                        }
+                    ],
+                    "freeform": false
+                },
+                "notes": {
+                    "options": [],
+                    "freeform": true
+                }
+            }
+        },
+        {
+            "name": "elog",
+            "calendars": ["exercise"],
+            "eventTitleSourceProperty": "activity",
+            "properties": {
+                "type": {
+                    "options": [
+                        {
+                            "bigText": "cardio",
+                            "smallText": "",
+                            "value": "cardio"
+                        },
+                        {
+                            "bigText": "str",
+                            "smallText": "",
+                            "value": "str"
+                        },
+                        {
+                            "bigText": "other",
+                            "smallText": "",
+                            "value": "other"
+                        }
+                    ],
+                    "freeform": false
+                },
+                "activity": {
+                    "options": "{{datapath}}/etypes.csv",
+                    "freeform": true
+                },
+                "intensity": {
+                    "options": [],
+                    "freeform": true
+                },
+                "social": {
+                    "options": [
+                        {
+                            "bigText": "0",
+                            "smallText": "alone",
+                            "value": 0
+                        },
+                        {
+                            "bigText": "1",
+                            "smallText": "with others",
+                            "value": 1
+                        }
+                    ]
+                },
+                "notes": {
+                    "options": [],
+                    "freeform": true
+                }
+            }
+        }
+    ]
+}

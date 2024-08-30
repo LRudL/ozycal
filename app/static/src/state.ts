@@ -1,6 +1,8 @@
 import {createReactiveArray, createReactiveState, dateToWeekID, initializeSelectedTime, timeConvert} from "./utils.ts"
-import {IState, IEventObj} from "./types.ts"
+import {IState, IEventObj, IDatalinks, IDatalinkSpec, IUI} from "./types.ts"
 import { DefaultMap } from "./utils";
+import { IModalResult } from "./modal.ts";
+import { Datalinks } from "./datalinks.ts";
 
 export class NoEventsFound extends Error {
     constructor(message = "No events found") {
@@ -27,14 +29,17 @@ export class State implements IState {
         editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void;
         selectedWeekUpdate: (week: string) => void;
     };
+    ui: IUI | null;
     events: IEventObj[];
     editedEvents: {
         created: IEventObj[];
         deleted: IEventObj[];
         modified: IEventObj[];
     };
+    datalinks: IDatalinks;
 
-    constructor(time: Date, ) {
+    constructor(time: Date, datalinksSpecs: IDatalinkSpec[]) {
+        this.ui = null;
         this.events = [];
         this.uiUpdateTriggers = {
             selectedModeUpdate: () => {},
@@ -44,6 +49,7 @@ export class State implements IState {
             editedEventsUpdate: () => {},
             selectedWeekUpdate: () => {}
         };
+        this.datalinks = new Datalinks(datalinksSpecs);
         this.selected = createReactiveState({
             mode: 'time',
             time: initializeSelectedTime(time),
@@ -85,7 +91,12 @@ export class State implements IState {
         };
     }
 
-    connectUI(selectedModeUpdate: (mode: string) => void, selectedTimeUpdate: (time: Date) => void, selectedEventUpdate: (event: IEventObj | null) => void, selectedCalendarUpdate: (calendar: string) => void, editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void, selectedWeekUpdate: (week: string) => void) {
+    setDatalinks(datalinkSpecs: IDatalinkSpec[]) {
+        this.datalinks = new Datalinks(datalinkSpecs);
+    }
+
+    connectUI(ui: IUI, selectedModeUpdate: (mode: string) => void, selectedTimeUpdate: (time: Date) => void, selectedEventUpdate: (event: IEventObj | null) => void, selectedCalendarUpdate: (calendar: string) => void, editedEventsUpdate: (editedEvents: {created: IEventObj[], deleted: IEventObj[], modified: IEventObj[]}) => void, selectedWeekUpdate: (week: string) => void) {
+        this.ui = ui;
         this.uiUpdateTriggers.selectedModeUpdate = selectedModeUpdate;
         this.uiUpdateTriggers.selectedTimeUpdate = selectedTimeUpdate;
         this.uiUpdateTriggers.selectedEventUpdate = selectedEventUpdate;
@@ -288,10 +299,10 @@ export class State implements IState {
             }
         }
         this.sortEvents();
-        let weeks = new Set(events.map(e => dateToWeekID(e.start)));
-        for (let week of weeks) {
-            this.loadedWeeks.set(week, true);
-        }
+        // let weeks = new Set(events.map(e => dateToWeekID(e.start)));
+        // for (let week of weeks) {
+        //     this.loadedWeeks.set(week, true);
+        // }
     }
     addEvent(start: Date | string, end: Date | string, title: string, id?: string) {
         if (id == undefined) {

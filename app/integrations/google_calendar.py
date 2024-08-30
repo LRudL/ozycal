@@ -7,7 +7,8 @@ from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
 from tenacity import retry, stop_after_attempt, wait_exponential
 import os
-from app.events import CALENDAR_IDS, Event
+from app.events import Event
+from app.settings import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -68,7 +69,7 @@ def get_calendar_colors(service, calendar_ids):
         for calendar in calendar_list.get("items", []):
             calendar_id = calendar["id"]
             calendar_name = next(
-                (k for k, v in CALENDAR_IDS.items() if v == calendar_id), None
+                (k for k, v in settings.get_calendar_ids().items() if v == calendar_id), None
             )
             if calendar_name and calendar_id in calendar_ids.values():
                 bg_color = calendar.get("backgroundColor")
@@ -102,7 +103,7 @@ def get_events(service, start: str, end: str) -> list[Event]:
 
     batch = service.new_batch_http_request(callback=batch_callback)
 
-    for calendar_name, calendar_id in CALENDAR_IDS.items():
+    for calendar_name, calendar_id in settings.get_calendar_ids().items():
         batch.add(
             service.events().list(
                 calendarId=calendar_id,

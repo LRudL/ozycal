@@ -1,5 +1,5 @@
 import { EventApi } from "@fullcalendar/core";
-import { IModalResult } from "./modal";
+import { IModalOption, IModalResult, IModalConfig } from "./modal";
 import { DefaultMap } from "./utils";
 
 export interface IEventObj {
@@ -22,6 +22,10 @@ export interface ICalendar {
     addEventSource: (source: IEventObj[]) => void;
     removeAllEventSources: () => void;
     gotoDate: (date: Date | string) => void;
+    view: {
+        activeStart: Date;
+        activeEnd: Date;
+    };
 }
 
 export interface IStateEditedEvents {
@@ -38,7 +42,9 @@ export interface IState {
         event: null | IEventObj,
         calendar: string,
         week: string,
-    },
+    };
+    ui: IUI | null;
+    datalinks: IDatalinks;
     loadedWeeks: DefaultMap<string, boolean>,
     calendarNames: string[];
     editedEvents: IStateEditedEvents;
@@ -68,14 +74,35 @@ export interface IState {
     updateSelectedTimeFromSelectedEvent: () => void;
 }
 
+export interface IDatalinks {
+    datalinkSpecs: IDatalinkSpec[];
+    eventDatalinks: Map<string, IEventDatalink>;
+    eventsWithNewDatalinks: Set<string>;
+    loadedWeeks: DefaultMap<string, boolean>;
+    addDatalinkSpecs: (datalinkSpecs: IDatalinkSpec[]) => void;
+    getApplicableDatalinks: (calendarName: string) => IDatalinkSpec[];
+    getEventDatalink: (event: IEventObj) => IEventDatalink | null;
+    updateEventId: (old_id: string, new_id: string) => void;
+    importEventDatalinks: (datalinks: IEventDatalink[]) => void;
+    setEventDatalink: (event: IEventObj, datalink: IEventDatalink) => void;
+    getEventDatalinkName: (eventID: string) => string | null;
+    toEventDatalinkPushes: () => IEventDatalink[];
+}
+
 export interface IUI {
     interface: ICalendar;
     state: IState;
     userTimezone: string;
     customCalendarColors: { [key: string]: string };
-
-    colorEvent(event: EventApi): void;
+    eventCustomClasses: Map<string, string[]>;
+    timeVisible(time: Date): boolean;
+    renderEvent(eventOrId: string | EventApi, skipInterfaceRender?: boolean): void;
+    colorEventByCalendar(event: EventApi): void;
+    getFullcalendarEventById(id: string): EventApi | null;
+    styleEventByDatalinks(eventId: string, event: EventApi): void;
     setCalendarColors(calendarColors: { [key: string]: string }): void;
+    renderAllEvents(): void;
+    showModal(modalConfig: IModalConfig): Promise<IModalResult | undefined>;
     promptUser(promptText: string): string | null;
     promptUserForSelectedCalendar(): Promise<IModalResult | undefined>;
     updateSelectedTimeLine(time: Date): void;
@@ -114,4 +141,24 @@ export interface SyncResult {
     created: {old_id: string, new_id: string}[];
     deleted: string[];
     modified: string[];
+}
+
+export interface IDatalinkSpec {
+    name: string;
+    calendars: string[];
+    eventTitleSourceProperty: string | null;
+    properties: { [key: string]: IDatalinkField };
+}
+
+export interface IDatalinkField {
+    options: IDatalinkFieldOption[] | string;
+    freeform: boolean;
+}
+
+export type IDatalinkFieldOption = IModalOption;
+
+export interface IEventDatalink {
+    datalink_name: string;
+    event: IEventObj;
+    properties: { [key: string]: string | number};
 }

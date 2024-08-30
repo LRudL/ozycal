@@ -1,8 +1,4 @@
-import json
 import datetime
-
-with open("calendar_ids.json", "r") as file:
-    CALENDAR_IDS = json.load(file)
 
 class Event:
     def __init__(

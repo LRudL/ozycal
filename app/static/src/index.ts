@@ -6,8 +6,8 @@ import { State } from "./state.ts"
 import { UI } from "./ui.ts"
 import { KeyState } from "./keys.ts"
 import { IEventObj, IState } from "./types.ts";
-import { fetchWeeklyEvents, fetchColors } from "./backendService.ts";
-import { importEvents } from './actions.ts';
+import { fetchWeeklyEvents, fetchColors, fetchDatalinks } from "./backendService.ts";
+import { importEvents, loadForWeek } from './actions.ts';
 
 document.addEventListener('DOMContentLoaded', function() {
     function createCalendar(time: Date, state: IState) {
@@ -17,6 +17,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (state.selected.mode === 'event' && state.selected.event && event.id === state.selected.event.id) {
                 classNames.push('fc-event-selected');
             }
+
+            if (state.ui != null) {
+                const customClasses = state.ui.eventCustomClasses.get(event.id);
+                if (customClasses != null) {
+                    classNames.push(...customClasses);
+                }
+            }
+
             return classNames;
         }
         var calendarEl = document.getElementById('calendar');
@@ -30,6 +38,12 @@ document.addEventListener('DOMContentLoaded', function() {
             firstDay: 1,
             // eventClick: null, // this is set below
             eventClassNames: eventClassNames,
+            dayHeaderClassNames: function(arg) {
+                if (arg.isToday) {
+                return ['current-day-header'];
+                }
+                return [];
+            },
             nowIndicator: true,
             now: time,
             height: "auto",
@@ -46,17 +60,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const eventsPromise = fetchWeeklyEvents(userTimezone);
     const colorsPromise = fetchColors();
+    const datalinksPromise = fetchDatalinks();
 
-    Promise.all([eventsPromise, colorsPromise])
-        .then(([eventsReceived, calendarColors]) => {
+    let time = new Date();
+    let state = new State(time, []);
+    let calendar = createCalendar(time, state);
+    let ui = new UI(calendar, state, userTimezone);
+
+    // Create a promise for loadForWeek
+    const loadForWeekPromise = new Promise<void>((resolve) => {
+        loadForWeek(state, ui, time, () => resolve());
+    });
+
+    // Wait for all promises to resolve
+    Promise.all([loadForWeekPromise, colorsPromise, datalinksPromise])
+        .then(([_, calendarColors, datalinksReceived]) => {
             let isInitialLoad = true;
-            let state = new State(new Date());
-            let calendar = createCalendar(state.selected.time, state);
-            let ui = new UI(calendar, state, userTimezone);
-            importEvents(state, ui, eventsReceived);
+            state.datalinks.addDatalinkSpecs(datalinksReceived);
             state.connectUI(
+                ui,
                 ui.selectedModeUpdate.bind(ui),
                 ui.selectedTimeUpdate.bind(ui),
                 ui.selectedEventUpdate.bind(ui),

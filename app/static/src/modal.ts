@@ -1,7 +1,7 @@
-interface IModalOption {
+export interface IModalOption {
     bigText: string;
     smallText: string;
-    value: string;
+    value: string | number;
 }
 
 interface IModalOptionSet {
@@ -19,7 +19,7 @@ export interface IModalConfig {
 }
 
 export interface IModalResult {
-  [key: string]: string;
+  [key: string]: string | number;
 }
 
 export let MODAL_OPEN = false;
@@ -123,7 +123,7 @@ export class SubModal {
     this.input.value = this.filteredOptions[index].bigText;
   }
 
-  getSelectedValue(): string {
+  getSelectedValue(): string | number {
     if (this.selectedIndex !== -1) {
       return this.filteredOptions[this.selectedIndex].value;
     } else if (this.optionSet.allowFreeText) {
@@ -211,7 +211,8 @@ export class Modal {
     const result: IModalResult = {};
     this.subModals.forEach((subModal, index) => {
       const optionSet = this.modalConfig.modalOptionSet[index];
-      result[optionSet.value] = subModal.getSelectedValue();
+      const key = optionSet.value.toString();
+      result[key] = subModal.getSelectedValue();
     });
     this.close(result);
   }
